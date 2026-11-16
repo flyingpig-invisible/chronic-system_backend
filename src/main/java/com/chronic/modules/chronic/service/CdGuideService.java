@@ -23,4 +23,7 @@ public interface CdGuideService extends IService<CdGuide> {
 
     /** 新增指导类型，仅医生与超级管理员可操作 */
     void addType(String label);
+
+    /** 删除指导类型，仅医生与超级管理员可操作 */
+    void deleteType(String label);
 }

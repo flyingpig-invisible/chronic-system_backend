@@ -99,4 +99,11 @@ public class CdGuideController {
         guideService.addType(body.get("label"));
         return Result.success();
     }
-}
+
+    @Operation(summary = "删除指导类型（仅医生与超级管理员）")
+    @PreAuthorize("@ss.hasPermi('chronic:guide:delete')")
+    @PostMapping("/delete")
+    public Result<Void> deleteType(@RequestParam String label) {
+        guideService.deleteType(label);
+        return Result.success();
+    }}

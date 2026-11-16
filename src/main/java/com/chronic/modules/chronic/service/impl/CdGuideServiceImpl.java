@@ -15,6 +15,8 @@ import com.chronic.modules.system.mapper.SysDictDataMapper;
 import com.chronic.modules.system.mapper.SysUserMapper;
 import com.chronic.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
+import org.apache.ibatis.annotations.Delete;
+import org.apache.ibatis.annotations.Param;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -122,6 +124,10 @@ public class CdGuideServiceImpl extends ServiceImpl<CdGuideMapper, CdGuide> impl
         data.setIsDefault("N");
         data.setStatus("0");
         dictDataMapper.insert(data);
+    }
+    @Override
+    public void deleteType(String label){
+        dictDataMapper.deleteByLabel(label);
     }
 
     private void checkTypeManagePermission() {
