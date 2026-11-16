@@ -5,6 +5,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 科室
@@ -33,4 +35,8 @@ public class SysDept implements Serializable {
     private String delFlag;
 
     private java.time.LocalDateTime createTime;
+
+    /** 子科室（非数据库字段） */
+    @TableField(exist = false)
+    private List<SysDept> children = new ArrayList<>();
 }

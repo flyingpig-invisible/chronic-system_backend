@@ -12,6 +12,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 远程指导
@@ -81,6 +82,21 @@ public class CdGuideController {
     @PutMapping("/{guideId}/read")
     public Result<Void> markRead(@PathVariable Long guideId) {
         guideService.markRead(guideId);
+        return Result.success();
+    }
+
+    @Operation(summary = "指导类型下拉选项")
+    @PreAuthorize("@ss.hasPermi('chronic:guide:list')")
+    @GetMapping("/type/option")
+    public Result<List<Map<String, String>>> typeOptions() {
+        return Result.success(guideService.typeOptions());
+    }
+
+    @Operation(summary = "新增指导类型（仅医生与超级管理员）")
+    @PreAuthorize("@ss.hasPermi('chronic:guide:add')")
+    @PostMapping("/type")
+    public Result<Void> addType(@RequestBody Map<String, String> body) {
+        guideService.addType(body.get("label"));
         return Result.success();
     }
 }

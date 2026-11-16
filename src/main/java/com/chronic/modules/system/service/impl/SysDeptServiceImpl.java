@@ -6,6 +6,10 @@ import com.chronic.common.exception.ServiceException;
 import com.chronic.modules.system.entity.SysDept;
 import com.chronic.modules.system.mapper.SysDeptMapper;
 import com.chronic.modules.system.service.SysDeptService;
+import com.chronic.modules.system.mapper.SysUserMapper;
+import com.chronic.modules.system.entity.SysUser;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -13,7 +17,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> implements SysDeptService {
+
+    private final SysUserMapper userMapper;
 
     @Override
     public List<SysDept> tree() {
@@ -26,6 +33,7 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> impl
         for (SysDept d : all) {
             Long pid = d.getParentId() == null ? 0L : d.getParentId();
             if (pid.equals(parentId)) {
+                d.setChildren(buildTree(all, d.getDeptId()));
                 result.add(d);
             }
         }
@@ -57,6 +65,14 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> impl
         if (children != null && children > 0) {
             throw new ServiceException("存在下级科室，无法删除");
         }
+        // 科室被在职用户引用时不允许删除
+        Long userCount = userMapper.selectCount(Wrappers.<SysUser>lambdaQuery()
+                .eq(SysUser::getDeptId, deptId)
+                .eq(SysUser::getStatus, "0"));
+        if (userCount != null && userCount > 0) {
+            throw new ServiceException("该科室下还有在职用户，无法删除");
+        }
+
         removeById(deptId);
     }
 }

@@ -29,6 +29,10 @@ public class UserInfoVO implements Serializable {
 
     private String userType;
 
+    private Long deptId;
+
+    private String deptName;
+
     @Schema(description = "角色标识列表")
     private List<String> roles;
 

@@ -45,12 +45,20 @@ public class JwtUtils {
      * 鐢熸垚 token锛堝惈鐪熷疄濮撳悕涓庡皬绋嬪簭瑙掕壊锛?
      */
     public String createToken(Long userId, String username, String userType, String realName, String mpRole) {
+        return createToken(userId, username, userType, realName, mpRole, null);
+    }
+
+    /** 生成 token（含科室ID，科室信息以责任医生所在科室为准） */
+    public String createToken(Long userId, String username, String userType, String realName, String mpRole, Long deptId) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", userId);
         claims.put("username", username);
         claims.put("userType", userType);
         if (realName != null) {
             claims.put("realName", realName);
+        }
+        if (deptId != null) {
+            claims.put("deptId", deptId);
         }
         if (mpRole != null) {
             claims.put("mpRole", mpRole);
@@ -112,6 +120,15 @@ public class JwtUtils {
     public String getRealName(String token) {
         Claims claims = parseToken(token);
         return claims == null ? null : (String) claims.get("realName");
+    }
+
+    public Long getDeptId(String token) {
+        Claims claims = parseToken(token);
+        if (claims == null) {
+            return null;
+        }
+        Object deptId = claims.get("deptId");
+        return deptId == null ? null : Long.valueOf(deptId.toString());
     }
 
     public String getMpRole(String token) {

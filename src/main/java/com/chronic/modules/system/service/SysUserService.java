@@ -24,4 +24,7 @@ public interface SysUserService extends IService<SysUser> {
     void changeStatus(Long userId, String status);
 
     List<SysUser> doctorList();
+
+    /** 查询指定科室下的医生（含停用状态，供科室管理页展示） */
+    List<SysUser> doctorsOfDept(Long deptId);
 }

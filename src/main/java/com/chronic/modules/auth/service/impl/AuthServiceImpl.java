@@ -10,6 +10,8 @@ import com.chronic.modules.auth.vo.UserInfoVO;
 import com.chronic.modules.system.entity.SysMenu;
 import com.chronic.modules.system.entity.SysUser;
 import com.chronic.modules.system.mapper.SysMenuMapper;
+import com.chronic.modules.system.mapper.SysDeptMapper;
+import com.chronic.modules.system.entity.SysDept;
 import com.chronic.modules.system.mapper.SysUserMapper;
 import com.chronic.security.LoginUser;
 import com.chronic.security.SecurityUtils;
@@ -36,6 +38,7 @@ public class AuthServiceImpl implements AuthService {
     private final SysMenuMapper menuMapper;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
+    private final SysDeptMapper deptMapper;
 
     @Override
     public LoginVO login(LoginDTO dto) {
@@ -58,7 +61,8 @@ public class AuthServiceImpl implements AuthService {
         update.setLoginDate(LocalDateTime.now());
         userMapper.updateById(update);
 
-        String token = jwtUtils.createToken(user.getUserId(), user.getUsername(), "sys", user.getRealName(), null);
+        String token = jwtUtils.createToken(user.getUserId(), user.getUsername(), "sys",
+                user.getRealName(), null, user.getDeptId());
 
         LoginVO vo = new LoginVO();
         vo.setToken(token);
@@ -85,6 +89,11 @@ public class AuthServiceImpl implements AuthService {
         vo.setAvatar(user.getAvatar());
         vo.setPhone(user.getPhone());
         vo.setUserType(user.getUserType());
+        vo.setDeptId(user.getDeptId());
+        if (user.getDeptId() != null) {
+            SysDept dept = deptMapper.selectById(user.getDeptId());
+            vo.setDeptName(dept == null ? null : dept.getDeptName());
+        }
 
         // 超管拥有全部权限
         List<String> roles = new ArrayList<>();

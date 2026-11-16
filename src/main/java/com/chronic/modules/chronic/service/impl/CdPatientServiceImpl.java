@@ -11,6 +11,9 @@ import com.chronic.modules.chronic.query.PatientQuery;
 import com.chronic.modules.chronic.service.CdPatientService;
 import com.chronic.modules.chronic.vo.DashboardVO;
 import com.chronic.modules.chronic.vo.PatientVO;
+import com.chronic.modules.system.entity.SysUser;
+import com.chronic.modules.system.mapper.SysUserMapper;
+import com.chronic.modules.system.service.DeptResolver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -40,6 +43,8 @@ public class CdPatientServiceImpl implements CdPatientService {
     private final CdMeasureMapper measureMapper;
     private final CdWarningMapper warningMapper;
     private final CdHealthScoreMapper healthScoreMapper;
+    private final SysUserMapper userMapper;
+    private final DeptResolver deptResolver;
 
     /** 病种编码 -> 名称 */
     private static final Map<String, String> DISEASE_NAME = Map.of(
@@ -68,6 +73,15 @@ public class CdPatientServiceImpl implements CdPatientService {
         wrapper.eq(StringUtils.hasText(query.getRiskLevel()), CdPatient::getRiskLevel, query.getRiskLevel())
                .eq(StringUtils.hasText(query.getStatus()), CdPatient::getStatus, query.getStatus())
                .eq(query.getDoctorId() != null, CdPatient::getDoctorId, query.getDoctorId());
+
+        // 科室筛选：以责任医生所在科室为准，先把科室展开为医生集合
+        if (query.getDeptId() != null) {
+            Set<Long> doctorIds = deptResolver.userIdsOfDept(query.getDeptId());
+            if (doctorIds.isEmpty()) {
+                return PageResult.of(0L, new ArrayList<>());
+            }
+            wrapper.in(CdPatient::getDoctorId, doctorIds);
+        }
 
         // 病种筛选
         if (query.getDiseaseCodes() != null && !query.getDiseaseCodes().isEmpty()) {
@@ -123,6 +137,9 @@ public class CdPatientServiceImpl implements CdPatientService {
             patient.setPatientNo(generatePatientNo());
         }
 
+        // 科室跟随责任医生，忽略前端传入值
+        patient.setDeptId(deptResolver.deptIdOfDoctor(patient.getDoctorId()));
+
         // 默认值
         if (!StringUtils.hasText(patient.getRiskLevel())) {
             patient.setRiskLevel("1");
@@ -156,6 +173,8 @@ public class CdPatientServiceImpl implements CdPatientService {
                 throw new ServiceException("患者编号已存在");
             }
         }
+        // 科室跟随责任医生，忽略前端传入值
+        patient.setDeptId(deptResolver.deptIdOfDoctor(patient.getDoctorId()));
         patientMapper.updateById(patient);
 
         // 病种变动则重建关联
@@ -296,9 +315,26 @@ public class CdPatientServiceImpl implements CdPatientService {
             diseaseMap.computeIfAbsent(d.getPatientId(), k -> new ArrayList<>()).add(name);
         }
 
+        // 批量补全责任医生姓名与科室名称
+        Set<Long> doctorIds = patients.stream().map(CdPatient::getDoctorId)
+                .filter(java.util.Objects::nonNull).collect(Collectors.toSet());
+        Map<Long, Long> doctorDeptMap = new HashMap<>();
+        Map<Long, String> doctorNameMap = new HashMap<>();
+        if (!doctorIds.isEmpty()) {
+            for (SysUser u : userMapper.selectBatchIds(doctorIds)) {
+                doctorNameMap.put(u.getUserId(), u.getRealName());
+                doctorDeptMap.put(u.getUserId(), u.getDeptId());
+            }
+        }
+        Map<Long, String> deptNameMap = deptResolver.deptNames(doctorDeptMap.values());
+
         for (CdPatient p : patients) {
             PatientVO vo = new PatientVO();
             BeanUtils.copyProperties(p, vo);
+            vo.setDoctorName(doctorNameMap.get(p.getDoctorId()));
+            Long ownerDeptId = doctorDeptMap.get(p.getDoctorId());
+            vo.setDeptId(ownerDeptId);
+            vo.setDeptName(ownerDeptId == null ? null : deptNameMap.get(ownerDeptId));
             vo.setAge(calcAge(p.getBirthday()));
             vo.setDiseases(diseaseMap.getOrDefault(p.getPatientId(), new ArrayList<>()));
             vos.add(vo);

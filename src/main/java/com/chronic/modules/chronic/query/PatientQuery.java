@@ -38,6 +38,9 @@ public class PatientQuery extends PageQuery {
     @Schema(description = "责任医生ID")
     private Long doctorId;
 
+    @Schema(description = "科室ID（按责任医生所在科室过滤）")
+    private Long deptId;
+
     @Schema(description = "病种编码列表")
     private List<String> diseaseCodes;
 }

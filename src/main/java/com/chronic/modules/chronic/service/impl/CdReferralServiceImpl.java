@@ -10,13 +10,20 @@ import com.chronic.modules.chronic.entity.CdReferral;
 import com.chronic.modules.chronic.mapper.CdReferralMapper;
 import com.chronic.modules.chronic.query.ReferralQuery;
 import com.chronic.modules.chronic.service.CdReferralService;
+import com.chronic.modules.system.service.DeptResolver;
+import com.chronic.security.LoginUser;
+import com.chronic.security.SecurityUtils;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 
 @Service
+@RequiredArgsConstructor
 public class CdReferralServiceImpl extends ServiceImpl<CdReferralMapper, CdReferral> implements CdReferralService {
+
+    private final DeptResolver deptResolver;
 
     @Override
     public PageResult<CdReferral> queryPage(ReferralQuery query) {
@@ -40,6 +47,13 @@ public class CdReferralServiceImpl extends ServiceImpl<CdReferralMapper, CdRefer
         }
         referral.setReferralId(null);
         referral.setReferralStatus("0");
+        // 转出科室以当前医生所在科室为准，忽略前端传值
+        LoginUser doctor = SecurityUtils.getLoginUser();
+        Long fromDeptId = doctor.getDeptId() != null ? doctor.getDeptId() : deptResolver.deptIdOfDoctor(doctor.getUserId());
+        referral.setFromDeptId(fromDeptId);
+        if (fromDeptId != null) {
+            referral.setFromDeptName(deptResolver.deptNames(java.util.List.of(fromDeptId)).get(fromDeptId));
+        }
         referral.setApplyTime(LocalDateTime.now());
         save(referral);
     }

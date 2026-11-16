@@ -3,6 +3,8 @@ package com.chronic.modules.system.controller;
 import com.chronic.common.result.Result;
 import com.chronic.modules.system.entity.SysDept;
 import com.chronic.modules.system.service.SysDeptService;
+import com.chronic.modules.system.service.SysUserService;
+import com.chronic.modules.system.entity.SysUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +25,7 @@ import java.util.List;
 public class SysDeptController {
 
     private final SysDeptService deptService;
+    private final SysUserService userService;
 
     @Operation(summary = "查询科室树")
     @PreAuthorize("@ss.hasPermi('system:dept:list')")
@@ -60,5 +63,12 @@ public class SysDeptController {
     public Result<Void> remove(@PathVariable Long deptId) {
         deptService.removeDept(deptId);
         return Result.success();
+    }
+
+    @Operation(summary = "查询科室下医生")
+    @PreAuthorize("@ss.hasPermi('system:dept:list')")
+    @GetMapping("/{deptId}/doctors")
+    public Result<List<SysUser>> doctors(@PathVariable Long deptId) {
+        return Result.success(userService.doctorsOfDept(deptId));
     }
 }

@@ -9,18 +9,24 @@ import com.chronic.modules.system.entity.SysUser;
 import com.chronic.modules.system.mapper.SysUserMapper;
 import com.chronic.modules.system.query.UserQuery;
 import com.chronic.modules.system.service.SysUserService;
+import com.chronic.modules.system.service.DeptResolver;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> implements SysUserService {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private DeptResolver deptResolver;
 
     @Override
     public PageResult<SysUser> queryPage(UserQuery query) {
@@ -34,6 +40,11 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
          .orderByDesc(SysUser::getCreateTime);
         Page<SysUser> page = page(new Page<>(query.getPageNum(), query.getPageSize()), w);
         page.getRecords().forEach(u -> u.setPassword(null));
+        // 填充科室名称，前端直接展示汉字名称而不是科室ID
+        java.util.Map<Long, String> deptNames = deptResolver.deptNames(
+                page.getRecords().stream().map(SysUser::getDeptId)
+                        .filter(java.util.Objects::nonNull).collect(java.util.stream.Collectors.toSet()));
+        page.getRecords().forEach(u -> u.setDeptName(u.getDeptId() == null ? null : deptNames.get(u.getDeptId())));
         return PageResult.of(page.getTotal(), page.getRecords());
     }
 
@@ -42,6 +53,9 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         SysUser user = getById(userId);
         if (user != null) {
             user.setPassword(null);
+            java.util.Map<Long, String> names = deptResolver.deptNames(
+                    user.getDeptId() == null ? java.util.Collections.emptySet() : java.util.Set.of(user.getDeptId()));
+            user.setDeptName(user.getDeptId() == null ? null : names.get(user.getDeptId()));
         }
         return user;
     }
@@ -110,6 +124,26 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
                 .eq(SysUser::getStatus, "0")
                 .orderByAsc(SysUser::getRealName));
         list.forEach(u -> u.setPassword(null));
+        // 补全科室名称，便于前端在医生下拉中展示所属科室
+        Map<Long, String> deptNames = deptResolver.deptNames(
+                list.stream().map(SysUser::getDeptId).filter(java.util.Objects::nonNull).collect(java.util.stream.Collectors.toSet()));
+        list.forEach(u -> u.setDeptName(u.getDeptId() == null ? null : deptNames.get(u.getDeptId())));
+        return list;
+    }
+
+    @Override
+    public List<SysUser> doctorsOfDept(Long deptId) {
+        if (deptId == null) {
+            return new ArrayList<>();
+        }
+        List<SysUser> list = list(new LambdaQueryWrapper<SysUser>()
+                .eq(SysUser::getUserType, "1")
+                .eq(SysUser::getDeptId, deptId)
+                .orderByAsc(SysUser::getStatus)
+                .orderByAsc(SysUser::getRealName));
+        list.forEach(u -> u.setPassword(null));
+        Map<Long, String> deptNames = deptResolver.deptNames(List.of(deptId));
+        list.forEach(u -> u.setDeptName(deptNames.get(deptId)));
         return list;
     }
 }

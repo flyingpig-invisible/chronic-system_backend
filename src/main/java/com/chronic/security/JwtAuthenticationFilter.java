@@ -39,6 +39,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String userType = jwtUtils.getUserType(token);
             String realName = jwtUtils.getRealName(token);
             String mpRole = jwtUtils.getMpRole(token);
+            Long deptId = jwtUtils.getDeptId(token);
 
             LoginUser loginUser = new LoginUser();
             loginUser.setUserId(userId);
@@ -46,6 +47,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             loginUser.setUserType(userType);
             loginUser.setRealName(realName);
             loginUser.setMpRole(mpRole);
+            loginUser.setDeptId(deptId);
 
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(loginUser, null,
