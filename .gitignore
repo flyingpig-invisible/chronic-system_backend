@@ -1,0 +1,15 @@
+﻿# IDEA
+.idea/
+
+# 编译产物
+target/
+
+# 其他构建/工具产物
+*.class
+*.jar
+*.war
+*.log
+
+# 系统文件
+.DS_Store
+Thumbs.db

@@ -1,0 +1,158 @@
+package com.chronic.modules.chronic.service.impl;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.chronic.common.exception.ServiceException;
+import com.chronic.common.result.PageResult;
+import com.chronic.modules.chronic.entity.CdRemind;
+import com.chronic.modules.chronic.entity.CdRemindLog;
+import com.chronic.modules.chronic.mapper.CdRemindLogMapper;
+import com.chronic.modules.chronic.mapper.CdPatientMapper;
+import com.chronic.modules.chronic.mapper.CdRemindMapper;
+import com.chronic.modules.chronic.query.RemindQuery;
+import com.chronic.modules.chronic.service.CdRemindService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+@Service
+public class CdRemindServiceImpl extends ServiceImpl<CdRemindMapper, CdRemind> implements CdRemindService {
+
+    @Autowired
+    private CdRemindLogMapper remindLogMapper;
+
+    @Autowired
+    private CdPatientMapper patientMapper;
+
+    @Override
+    public PageResult<CdRemind> queryPage(RemindQuery query) {
+        LambdaQueryWrapper<CdRemind> w = new LambdaQueryWrapper<>();
+        w.eq(query.getPatientId() != null, CdRemind::getPatientId, query.getPatientId())
+         .eq(StringUtils.hasText(query.getStatus()), CdRemind::getStatus, query.getStatus())
+         .like(StringUtils.hasText(query.getKeyword()), CdRemind::getMedicineName, query.getKeyword())
+         .orderByDesc(CdRemind::getCreateTime);
+        Page<CdRemind> page = page(new Page<>(query.getPageNum(), query.getPageSize()), w);
+        fillPatientName(page.getRecords());
+        return PageResult.of(page.getTotal(), page.getRecords());
+    }
+
+    /** 填充患者姓名 */
+    private void fillPatientName(List<CdRemind> list) {
+        if (list == null || list.isEmpty()) {
+            return;
+        }
+        java.util.Set<Long> ids = new java.util.HashSet<>();
+        list.forEach(r -> { if (r.getPatientId() != null) ids.add(r.getPatientId()); });
+        if (ids.isEmpty()) {
+            return;
+        }
+        java.util.Map<Long, String> nameMap = new java.util.HashMap<>();
+        patientMapper.selectBatchIds(ids).forEach(p -> nameMap.put(p.getPatientId(), p.getName()));
+        list.forEach(r -> r.setPatientName(nameMap.get(r.getPatientId())));
+    }
+
+    @Override
+    public void saveRemind(CdRemind remind) {
+        if (remind.getPatientId() == null) {
+            throw new ServiceException("患者不能为空");
+        }
+        if (!StringUtils.hasText(remind.getMedicineName())) {
+            throw new ServiceException("药品名称不能为空");
+        }
+        if (!StringUtils.hasText(remind.getStatus())) {
+            remind.setStatus("1");
+        }
+        saveOrUpdate(remind);
+    }
+
+    @Override
+    public void removeRemind(Long remindId) {
+        removeById(remindId);
+    }
+
+    @Override
+    public void changeStatus(Long remindId, String status) {
+        CdRemind remind = getById(remindId);
+        if (remind == null) {
+            throw new ServiceException("提醒不存在");
+        }
+        remind.setStatus(status);
+        updateById(remind);
+    }
+
+    @Override
+    public List<CdRemindLog> todayLog(Long patientId) {
+        List<CdRemind> reminds = list(new LambdaQueryWrapper<CdRemind>()
+                .eq(CdRemind::getPatientId, patientId)
+                .eq(CdRemind::getStatus, "1"));
+        LocalDate today = LocalDate.now();
+        List<CdRemindLog> result = new ArrayList<>();
+        for (CdRemind remind : reminds) {
+            if (remind.getBeginDate() != null && today.isBefore(remind.getBeginDate())) {
+                continue;
+            }
+            if (remind.getEndDate() != null && today.isAfter(remind.getEndDate())) {
+                continue;
+            }
+            String times = remind.getRemindTimes();
+            if (!StringUtils.hasText(times)) {
+                times = "08:00";
+            }
+            for (String time : times.split(",")) {
+                String planTime = time.trim();
+                if (planTime.isEmpty()) {
+                    continue;
+                }
+                CdRemindLog log = remindLogMapper.selectOne(new LambdaQueryWrapper<CdRemindLog>()
+                        .eq(CdRemindLog::getRemindId, remind.getRemindId())
+                        .eq(CdRemindLog::getPlanDate, today)
+                        .eq(CdRemindLog::getPlanTime, planTime)
+                        .last("limit 1"));
+                if (log == null) {
+                    log = new CdRemindLog();
+                    log.setRemindId(remind.getRemindId());
+                    log.setPatientId(patientId);
+                    log.setPlanDate(today);
+                    log.setPlanTime(planTime);
+                    log.setCheckStatus("0");
+                }
+                result.add(log);
+            }
+        }
+        return result;
+    }
+
+    @Override
+    public void check(Long remindId, String checkStatus) {
+        CdRemind remind = getById(remindId);
+        if (remind == null) {
+            throw new ServiceException("提醒不存在");
+        }
+        LocalDate today = LocalDate.now();
+        CdRemindLog log = remindLogMapper.selectOne(new LambdaQueryWrapper<CdRemindLog>()
+                .eq(CdRemindLog::getRemindId, remindId)
+                .eq(CdRemindLog::getPlanDate, today)
+                .orderByAsc(CdRemindLog::getPlanTime)
+                .last("limit 1"));
+        if (log == null) {
+            log = new CdRemindLog();
+            log.setRemindId(remindId);
+            log.setPatientId(remind.getPatientId());
+            log.setPlanDate(today);
+            log.setPlanTime("00:00");
+            log.setCheckStatus(checkStatus);
+            log.setCheckTime(LocalDateTime.now());
+            remindLogMapper.insert(log);
+        } else {
+            log.setCheckStatus(checkStatus);
+            log.setCheckTime(LocalDateTime.now());
+            remindLogMapper.updateById(log);
+        }
+    }
+}
