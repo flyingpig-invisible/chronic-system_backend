@@ -28,6 +28,11 @@ public interface CdScoreService extends IService<CdHealthScore> {
      */
     void deleteScore(Long scoreId);
 
+    /**
+     * 物理删除多条评分记录
+     */
+    int deleteScores(List<Long> scoreIds);
+
     Map<String, Object> trend(Long patientId);
 
     PageResult<CdHealthScore> pageAll(ScoreQuery query);

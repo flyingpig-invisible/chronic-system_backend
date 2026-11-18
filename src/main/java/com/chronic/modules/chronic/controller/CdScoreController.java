@@ -52,6 +52,13 @@ public class CdScoreController {
         return Result.success();
     }
 
+    @Operation(summary = "批量删除评分记录")
+    @PreAuthorize("@ss.hasPermi('chronic:score:list')")
+    @DeleteMapping("/batch")
+    public Result<Integer> batchDelete(@RequestBody List<Long> scoreIds) {
+        return Result.success(scoreService.deleteScores(scoreIds));
+    }
+
     @Operation(summary = "查询患者评分趋势")
     @PreAuthorize("@ss.hasPermi('chronic:score:list')")
     @GetMapping("/trend/{patientId}")

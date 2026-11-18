@@ -110,10 +110,21 @@ public class CdPatientController {
         List<PatientVO> rows = patientService.listForExport(query);
         List<Object[]> data = new java.util.ArrayList<>();
         for (PatientVO v : rows) {
-            data.add(new Object[]{v.getPatientNo(), v.getName(), v.getGender(), v.getPhone(),
+            data.add(new Object[]{v.getPatientNo(), v.getName(), genderName(v.getGender()), v.getPhone(),
                     v.getRiskLevel(), v.getRiskScore(), v.getDoctorName()});
         }
         com.chronic.common.utils.ExcelUtils.export(response, "患者列表", "患者列表",
                 new String[]{"患者编号", "姓名", "性别", "手机号", "风险等级", "风险评分", "责任医生"}, data);
+    }
+
+    /** 性别：1男 0女 2未知 */
+    private String genderName(String gender) {
+        if ("1".equals(gender)) {
+            return "男";
+        }
+        if ("0".equals(gender)) {
+            return "女";
+        }
+        return "未知";
     }
 }

@@ -30,7 +30,7 @@ public class CdPatient implements Serializable {
     @Schema(description = "姓名")
     private String name;
 
-    @Schema(description = "性别：0男 1女 2未知")
+    @Schema(description = "性别：1男 0女 2未知")
     private String gender;
 
     @Schema(description = "出生日期")
