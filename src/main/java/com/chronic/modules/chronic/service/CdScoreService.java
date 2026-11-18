@@ -23,6 +23,11 @@ public interface CdScoreService extends IService<CdHealthScore> {
      */
     void saveDiseaseWeights(ScoreWeightSaveDTO dto);
 
+    /**
+     * 物理删除评分记录
+     */
+    void deleteScore(Long scoreId);
+
     Map<String, Object> trend(Long patientId);
 
     PageResult<CdHealthScore> pageAll(ScoreQuery query);

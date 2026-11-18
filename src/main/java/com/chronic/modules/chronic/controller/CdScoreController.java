@@ -44,6 +44,14 @@ public class CdScoreController {
         return Result.success(scoreService.calcScore(patientId));
     }
 
+    @Operation(summary = "删除评分记录")
+    @PreAuthorize("@ss.hasPermi('chronic:score:list')")
+    @DeleteMapping("/{scoreId}")
+    public Result<Void> delete(@PathVariable Long scoreId) {
+        scoreService.deleteScore(scoreId);
+        return Result.success();
+    }
+
     @Operation(summary = "查询患者评分趋势")
     @PreAuthorize("@ss.hasPermi('chronic:score:list')")
     @GetMapping("/trend/{patientId}")

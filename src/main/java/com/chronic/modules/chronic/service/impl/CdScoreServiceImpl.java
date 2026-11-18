@@ -179,6 +179,19 @@ public class CdScoreServiceImpl extends ServiceImpl<CdHealthScoreMapper, CdHealt
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    public void deleteScore(Long scoreId) {
+        if (scoreId == null) {
+            throw new ServiceException("评分记录ID不能为空");
+        }
+        // cd_health_score 无逻辑删除字段，此处直接物理删除
+        int rows = getBaseMapper().deleteById(scoreId);
+        if (rows == 0) {
+            throw new ServiceException("评分记录不存在或已被删除");
+        }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public void saveDiseaseWeights(ScoreWeightSaveDTO dto) {
         if (dto == null || !StringUtils.hasText(dto.getDiseaseCode())) {
             throw new ServiceException("病种不能为空");
