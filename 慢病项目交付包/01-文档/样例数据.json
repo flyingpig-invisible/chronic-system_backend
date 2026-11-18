@@ -1,0 +1,1211 @@
+{
+  "POST /auth/login": {
+    "code": 0,
+    "msg": "ok",
+    "data": {
+      "token": "eyJhbGciOiJIUzI1NiJ9.MOCK",
+      "userId": "1856230144770013",
+      "role": "patient",
+      "roles": [
+        {
+          "key": "patient",
+          "name": "患者",
+          "icon": "user",
+          "tone": "blue",
+          "desc": "查看个人健康数据、用药与随访计划",
+          "tag": "适老化大字模式"
+        },
+        {
+          "key": "family",
+          "name": "家属",
+          "icon": "users",
+          "tone": "orange",
+          "desc": "查看脱敏健康概览、高危急警与协助打卡",
+          "tag": "仅脱敏数据"
+        },
+        {
+          "key": "doctor",
+          "name": "医生",
+          "icon": "doctor",
+          "tone": "green",
+          "desc": "进入医生工作台，管理患者与随访任务",
+          "tag": "工作台"
+        }
+      ],
+      "expiresIn": 7200
+    }
+  },
+  "GET /auth/roles": {
+    "code": 0,
+    "msg": "ok",
+    "data": [
+      {
+        "key": "patient",
+        "name": "患者",
+        "icon": "user",
+        "tone": "blue",
+        "desc": "查看个人健康数据、用药与随访计划",
+        "tag": "适老化大字模式"
+      },
+      {
+        "key": "family",
+        "name": "家属",
+        "icon": "users",
+        "tone": "orange",
+        "desc": "查看脱敏健康概览、高危急警与协助打卡",
+        "tag": "仅脱敏数据"
+      },
+      {
+        "key": "doctor",
+        "name": "医生",
+        "icon": "doctor",
+        "tone": "green",
+        "desc": "进入医生工作台，管理患者与随访任务",
+        "tag": "工作台"
+      }
+    ]
+  },
+  "GET /patient/profile": {
+    "code": 0,
+    "msg": "ok",
+    "data": {
+      "name": "李秀兰",
+      "alias": "李阿姨",
+      "gender": "女",
+      "age": 62,
+      "height": 158,
+      "weight": 63,
+      "bmi": 25.2,
+      "phone": "13800136688",
+      "idcard": "5201**********0028",
+      "diseases": [
+        "高血压",
+        "2型糖尿病"
+      ],
+      "insurance": "贵州省本级职工医保",
+      "home": "贵州省贵阳市南明区",
+      "doctor": {
+        "name": "王志强",
+        "title": "主任医师",
+        "dept": "心内科",
+        "hospital": "贵州省人民医院"
+      },
+      "family": [
+        {
+          "name": "李伟",
+          "relation": "儿子",
+          "phone": "13900132233"
+        }
+      ]
+    }
+  },
+  "GET /patient/family": {
+    "code": 0,
+    "msg": "ok",
+    "data": [
+      {
+        "name": "李伟",
+        "relation": "儿子",
+        "phone": "13900132233"
+      }
+    ]
+  },
+  "GET /home/summary": {
+    "code": 0,
+    "msg": "ok",
+    "data": {
+      "patient": {
+        "name": "李秀兰",
+        "alias": "李阿姨",
+        "gender": "女",
+        "age": 62,
+        "height": 158,
+        "weight": 63,
+        "bmi": 25.2,
+        "phone": "13800136688",
+        "idcard": "5201**********0028",
+        "diseases": [
+          "高血压",
+          "2型糖尿病"
+        ],
+        "insurance": "贵州省本级职工医保",
+        "home": "贵州省贵阳市南明区",
+        "doctor": {
+          "name": "王志强",
+          "title": "主任医师",
+          "dept": "心内科",
+          "hospital": "贵州省人民医院"
+        },
+        "family": [
+          {
+            "name": "李伟",
+            "relation": "儿子",
+            "phone": "13900132233"
+          }
+        ]
+      },
+      "risk": {
+        "level": "平稳",
+        "type": "green",
+        "summary": "今日平稳，继续保持",
+        "advice": "血压达标，已完成用药打卡，建议晚间适度散步",
+        "score": 86,
+        "checkinDays": 12,
+        "rank": "优于 78% 的同龄患者"
+      },
+      "todayMetrics": [
+        {
+          "key": "bp",
+          "name": "血压",
+          "value": "128/78",
+          "unit": "mmHg",
+          "icon": "bp",
+          "color": "blue",
+          "status": "normal",
+          "statusText": "达标"
+        },
+        {
+          "key": "glucose",
+          "name": "血糖",
+          "value": "6.2",
+          "unit": "mmol/L",
+          "icon": "glucose",
+          "color": "blue",
+          "status": "normal",
+          "statusText": "达标"
+        },
+        {
+          "key": "hr",
+          "name": "心率",
+          "value": "76",
+          "unit": "次/分",
+          "icon": "pulse",
+          "color": "blue",
+          "status": "normal",
+          "statusText": "正常"
+        },
+        {
+          "key": "spo2",
+          "name": "血氧",
+          "value": "98",
+          "unit": "%",
+          "icon": "spo2",
+          "color": "blue",
+          "status": "normal",
+          "statusText": "正常"
+        }
+      ],
+      "todayTasks": [
+        {
+          "id": "med",
+          "icon": "pill",
+          "title": "用药打卡",
+          "desc": "今日 3 次，已完成 1 次",
+          "done": false,
+          "type": "primary",
+          "url": "/pages/medication/medication"
+        },
+        {
+          "id": "visit",
+          "icon": "calendar",
+          "title": "随访复诊",
+          "desc": "明天 09:00，请提前准备",
+          "done": false,
+          "type": "link",
+          "url": "/pages/plan/plan"
+        },
+        {
+          "id": "device",
+          "icon": "watch",
+          "title": "设备同步",
+          "desc": "建议今日完成血压测量",
+          "done": true,
+          "type": "link",
+          "url": "/pages/device/device"
+        }
+      ],
+      "quickActions": [
+        {
+          "id": "sync",
+          "icon": "sync",
+          "name": "一键同步",
+          "url": "/pages/device/device"
+        },
+        {
+          "id": "symptom",
+          "icon": "mind",
+          "name": "症状自查",
+          "url": "/pages/chat/chat"
+        },
+        {
+          "id": "guide",
+          "icon": "book",
+          "name": "健康指导",
+          "url": "/pages/guide/guide"
+        },
+        {
+          "id": "family",
+          "icon": "users",
+          "name": "家属管理",
+          "url": "/pages/bind-relative/bind-relative"
+        },
+        {
+          "id": "report",
+          "icon": "doc",
+          "name": "报告解读",
+          "url": "/pages/emr/emr"
+        }
+      ]
+    }
+  },
+  "GET /monitor/trends?type=bp&range=week": {
+    "code": 0,
+    "msg": "ok",
+    "data": {
+      "type": "bp",
+      "range": "week",
+      "labels": [
+        "9/28",
+        "9/29",
+        "9/30",
+        "10/1",
+        "10/2",
+        "10/3",
+        "10/4"
+      ],
+      "key": "bp",
+      "title": "血压趋势",
+      "unit": "mmHg",
+      "series": [
+        {
+          "name": "收缩压",
+          "color": "#1677FF",
+          "data": [
+            118,
+            132,
+            126,
+            121,
+            138,
+            142,
+            128
+          ]
+        },
+        {
+          "name": "舒张压",
+          "color": "#12B76A",
+          "data": [
+            76,
+            84,
+            80,
+            78,
+            86,
+            88,
+            78
+          ]
+        }
+      ],
+      "abnormal": [
+        5
+      ],
+      "abnormalText": "异常",
+      "target": 140,
+      "targetText": "达标参考线",
+      "min": 50,
+      "max": 160,
+      "stats": [
+        {
+          "label": "近7天平均",
+          "value": "128/78",
+          "unit": "mmHg"
+        },
+        {
+          "label": "最高值",
+          "value": "142/88",
+          "unit": "mmHg",
+          "danger": true
+        },
+        {
+          "label": "最低值",
+          "value": "116/72",
+          "unit": "mmHg"
+        },
+        {
+          "label": "达标率",
+          "value": "86",
+          "unit": "%",
+          "ring": true
+        },
+        {
+          "label": "预警次数",
+          "value": "1",
+          "unit": "次",
+          "danger": true
+        }
+      ]
+    }
+  },
+  "GET /monitor/trends?type=glucose&range=week": {
+    "code": 0,
+    "msg": "ok",
+    "data": {
+      "type": "glucose",
+      "range": "week",
+      "labels": [
+        "9/28",
+        "9/29",
+        "9/30",
+        "10/1",
+        "10/2",
+        "10/3",
+        "10/4"
+      ],
+      "key": "glucose",
+      "title": "空腹血糖趋势",
+      "unit": "mmol/L",
+      "series": [
+        {
+          "name": "空腹血糖",
+          "color": "#1677FF",
+          "data": [
+            6.1,
+            5.9,
+            6.4,
+            6.2,
+            6.8,
+            6.4,
+            6.2
+          ]
+        }
+      ],
+      "abnormal": [
+        4
+      ],
+      "abnormalText": "偏高",
+      "target": 7,
+      "targetText": "控制目标线",
+      "min": 4,
+      "max": 9,
+      "stats": [
+        {
+          "label": "近7天平均",
+          "value": "6.3",
+          "unit": "mmol/L"
+        },
+        {
+          "label": "最高值",
+          "value": "6.8",
+          "unit": "mmol/L",
+          "danger": true
+        },
+        {
+          "label": "最低值",
+          "value": "5.9",
+          "unit": "mmol/L"
+        },
+        {
+          "label": "达标率",
+          "value": "86",
+          "unit": "%",
+          "ring": true
+        },
+        {
+          "label": "预警次数",
+          "value": "1",
+          "unit": "次"
+        }
+      ]
+    }
+  },
+  "GET /monitor/trends?type=hr&range=week": {
+    "code": 0,
+    "msg": "ok",
+    "data": {
+      "type": "hr",
+      "range": "week",
+      "labels": [
+        "9/28",
+        "9/29",
+        "9/30",
+        "10/1",
+        "10/2",
+        "10/3",
+        "10/4"
+      ],
+      "key": "hr",
+      "title": "静息心率趋势",
+      "unit": "次/分",
+      "series": [
+        {
+          "name": "静息心率",
+          "color": "#1677FF",
+          "data": [
+            72,
+            76,
+            74,
+            80,
+            78,
+            76,
+            76
+          ]
+        }
+      ],
+      "abnormal": [],
+      "target": 100,
+      "targetText": "上限参考线",
+      "min": 55,
+      "max": 110,
+      "stats": [
+        {
+          "label": "近7天平均",
+          "value": "76",
+          "unit": "次/分"
+        },
+        {
+          "label": "最高值",
+          "value": "80",
+          "unit": "次/分"
+        },
+        {
+          "label": "最低值",
+          "value": "72",
+          "unit": "次/分"
+        },
+        {
+          "label": "达标率",
+          "value": "100",
+          "unit": "%",
+          "ring": true
+        },
+        {
+          "label": "预警次数",
+          "value": "0",
+          "unit": "次"
+        }
+      ]
+    }
+  },
+  "GET /monitor/trends?type=copd&range=week": {
+    "code": 0,
+    "msg": "ok",
+    "data": {
+      "type": "copd",
+      "range": "week",
+      "labels": [
+        "9/28",
+        "9/29",
+        "9/30",
+        "10/1",
+        "10/2",
+        "10/3",
+        "10/4"
+      ],
+      "key": "copd",
+      "title": "血氧饱和度趋势",
+      "unit": "%",
+      "series": [
+        {
+          "name": "SpO₂",
+          "color": "#1677FF",
+          "data": [
+            97,
+            98,
+            98,
+            96,
+            97,
+            98,
+            98
+          ]
+        }
+      ],
+      "abnormal": [
+        3
+      ],
+      "abnormalText": "偏低",
+      "target": 95,
+      "targetText": "下限参考线",
+      "targetMode": "low",
+      "min": 90,
+      "max": 100,
+      "stats": [
+        {
+          "label": "近7天平均",
+          "value": "97.4",
+          "unit": "%"
+        },
+        {
+          "label": "最高值",
+          "value": "98",
+          "unit": "%"
+        },
+        {
+          "label": "最低值",
+          "value": "96",
+          "unit": "%",
+          "danger": true
+        },
+        {
+          "label": "达标率",
+          "value": "96",
+          "unit": "%",
+          "ring": true
+        },
+        {
+          "label": "预警次数",
+          "value": "1",
+          "unit": "次"
+        }
+      ]
+    }
+  },
+  "GET /monitor/records": {
+    "code": 0,
+    "msg": "ok",
+    "data": {
+      "total": 5,
+      "list": [
+        {
+          "id": "r1",
+          "type": "血压",
+          "value": "142/88",
+          "unit": "mmHg",
+          "time": "今天 08:30",
+          "status": "high",
+          "label": "偏高",
+          "color": "red"
+        },
+        {
+          "id": "r2",
+          "type": "血糖",
+          "value": "6.4",
+          "unit": "mmol/L",
+          "time": "昨天 07:20",
+          "status": "normal",
+          "label": "正常",
+          "color": "green"
+        },
+        {
+          "id": "r3",
+          "type": "血压",
+          "value": "126/76",
+          "unit": "mmHg",
+          "time": "昨天 07:10",
+          "status": "normal",
+          "label": "正常",
+          "color": "green"
+        },
+        {
+          "id": "r4",
+          "type": "心率",
+          "value": "76",
+          "unit": "次/分",
+          "time": "前天 21:40",
+          "status": "normal",
+          "label": "正常",
+          "color": "green"
+        },
+        {
+          "id": "r5",
+          "type": "血糖",
+          "value": "7.2",
+          "unit": "mmol/L",
+          "time": "前天 07:30",
+          "status": "high",
+          "label": "偏高",
+          "color": "red"
+        }
+      ]
+    }
+  },
+  "GET /monitor/disease-tabs": {
+    "code": 0,
+    "msg": "ok",
+    "data": [
+      {
+        "key": "bp",
+        "name": "高血压"
+      },
+      {
+        "key": "glucose",
+        "name": "糖尿病"
+      },
+      {
+        "key": "hr",
+        "name": "冠心病"
+      },
+      {
+        "key": "copd",
+        "name": "慢阻肺"
+      }
+    ]
+  },
+  "GET /alert/summary": {
+    "code": 0,
+    "msg": "ok",
+    "data": {
+      "high": 1,
+      "mid": 1,
+      "low": 1,
+      "tip": "您有 1 条高危预警，请立即处理",
+      "subTip": "血压极高，请优先采取急救建议"
+    }
+  },
+  "GET /alert/list": {
+    "code": 0,
+    "msg": "ok",
+    "data": {
+      "total": 5,
+      "list": [
+        {
+          "id": "a1",
+          "level": "high",
+          "levelText": "高危",
+          "title": "血压极高",
+          "value": "180/110",
+          "unit": "mmHg",
+          "time": "今天 08:15",
+          "desc": "请立即休息并联系医生，必要时拨打 120",
+          "status": "pending",
+          "read": false
+        },
+        {
+          "id": "a2",
+          "level": "mid",
+          "levelText": "中危",
+          "title": "血糖连续 3 天偏高",
+          "value": "",
+          "unit": "",
+          "time": "昨天 20:00",
+          "desc": "建议监测饮食并联系医生评估",
+          "status": "pending",
+          "read": false
+        },
+        {
+          "id": "a3",
+          "level": "low",
+          "levelText": "低危",
+          "title": "今日步数未达标",
+          "value": "",
+          "unit": "",
+          "time": "今天 18:00",
+          "desc": "建议饭后适度散步，目标 4000 步",
+          "status": "pending",
+          "read": true
+        },
+        {
+          "id": "a4",
+          "level": "mid",
+          "levelText": "中危",
+          "title": "漏服药物提醒",
+          "value": "",
+          "unit": "",
+          "time": "10-02 20:30",
+          "desc": "晚间二甲双胍未打卡，请补服并记录",
+          "status": "handled",
+          "read": true
+        },
+        {
+          "id": "a5",
+          "level": "high",
+          "levelText": "高危",
+          "title": "心率过快",
+          "value": "126",
+          "unit": "次/分",
+          "time": "10-01 16:20",
+          "desc": "已通知医生，10 分钟内恢复正常",
+          "status": "handled",
+          "read": true
+        }
+      ]
+    }
+  },
+  "GET /medication/list": {
+    "code": 0,
+    "msg": "ok",
+    "data": [
+      {
+        "id": "m1",
+        "name": "二甲双胍缓释片",
+        "dose": "0.5 g",
+        "way": "口服 · 餐后",
+        "time": "08:00",
+        "period": "早",
+        "status": "taken",
+        "takenAt": "今天 08:12"
+      },
+      {
+        "id": "m2",
+        "name": "厄贝沙坦片",
+        "dose": "150 mg",
+        "way": "口服 · 早餐后",
+        "time": "08:00",
+        "period": "早",
+        "status": "taken",
+        "takenAt": "今天 08:12"
+      },
+      {
+        "id": "m3",
+        "name": "二甲双胍缓释片",
+        "dose": "0.5 g",
+        "way": "口服 · 餐后",
+        "time": "18:00",
+        "period": "晚",
+        "status": "pending",
+        "takenAt": ""
+      },
+      {
+        "id": "m4",
+        "name": "阿托伐他汀钙片",
+        "dose": "20 mg",
+        "way": "口服 · 睡前",
+        "time": "20:00",
+        "period": "晚",
+        "status": "pending",
+        "takenAt": ""
+      }
+    ]
+  },
+  "GET /plan/today": {
+    "code": 0,
+    "msg": "ok",
+    "data": {
+      "tasks": [
+        {
+          "id": "med",
+          "icon": "pill",
+          "title": "用药打卡",
+          "desc": "今日 3 次，已完成 1 次",
+          "done": false,
+          "type": "primary",
+          "url": "/pages/medication/medication"
+        },
+        {
+          "id": "visit",
+          "icon": "calendar",
+          "title": "随访复诊",
+          "desc": "明天 09:00，请提前准备",
+          "done": false,
+          "type": "link",
+          "url": "/pages/plan/plan"
+        },
+        {
+          "id": "device",
+          "icon": "watch",
+          "title": "设备同步",
+          "desc": "建议今日完成血压测量",
+          "done": true,
+          "type": "link",
+          "url": "/pages/device/device"
+        }
+      ],
+      "doctorPlans": [
+        {
+          "id": "p1",
+          "doctor": "王志强",
+          "title": "低盐饮食计划",
+          "tag": "待打卡",
+          "desc": "每日盐量建议不超过 5 克，配合血压监测",
+          "period": "2026-10-01 至 2026-10-31",
+          "progress": 0.62,
+          "done": 18,
+          "total": 30
+        }
+      ]
+    }
+  },
+  "GET /recipe/list": {
+    "code": 0,
+    "msg": "ok",
+    "data": {
+      "total": 5,
+      "list": [
+        {
+          "id": "f1",
+          "name": "杂粮蔬菜粥",
+          "kcal": 216,
+          "salt": 0.4,
+          "gi": "低",
+          "tags": [
+            "低升糖",
+            "低盐"
+          ],
+          "desc": "燕麦+糙米+西兰花，主食减半更稳糖",
+          "tone": "green"
+        },
+        {
+          "id": "f2",
+          "name": "清蒸鲈鱼",
+          "kcal": 180,
+          "salt": 0.6,
+          "gi": "—",
+          "tags": [
+            "优质蛋白",
+            "低脂"
+          ],
+          "desc": "少盐少油，补充优质蛋白",
+          "tone": "blue"
+        },
+        {
+          "id": "f3",
+          "name": "凉拌苦瓜木耳",
+          "kcal": 88,
+          "salt": 0.3,
+          "gi": "低",
+          "tags": [
+            "控糖",
+            "高纤维"
+          ],
+          "desc": "清爽开胃，膳食纤维充足",
+          "tone": "green"
+        },
+        {
+          "id": "f4",
+          "name": "番茄炖豆腐",
+          "kcal": 152,
+          "salt": 0.5,
+          "gi": "低",
+          "tags": [
+            "低盐",
+            "补钙"
+          ],
+          "desc": "少油烹调，适合合并高血压",
+          "tone": "orange"
+        },
+        {
+          "id": "f5",
+          "name": "荞麦鸡丝面",
+          "kcal": 268,
+          "salt": 0.8,
+          "gi": "中",
+          "tags": [
+            "主食替换"
+          ],
+          "desc": "荞麦面替代白面条，升糖更平缓",
+          "tone": "blue"
+        }
+      ]
+    }
+  },
+  "GET /guide/categories": {
+    "code": 0,
+    "msg": "ok",
+    "data": [
+      "饮食",
+      "运动",
+      "用药",
+      "心理",
+      "急救"
+    ]
+  },
+  "GET /guide/list": {
+    "code": 0,
+    "msg": "ok",
+    "data": [
+      {
+        "id": "g1",
+        "title": "糖尿病饮食控糖指南",
+        "desc": "低升糖、控主食、规律进餐",
+        "tone": "blue",
+        "audio": true,
+        "tag": "糖尿病 · 5 分钟",
+        "url": "/pages/article/article?id=g1"
+      },
+      {
+        "id": "g2",
+        "title": "餐后运动建议",
+        "desc": "饭后适度活动，帮助稳定血糖",
+        "tone": "green",
+        "audio": true,
+        "tag": "糖尿病 · 3 分钟",
+        "url": "/pages/article/article?id=g2"
+      }
+    ]
+  },
+  "GET /article/list": {
+    "code": 0,
+    "msg": "ok",
+    "data": {
+      "total": 5,
+      "list": [
+        {
+          "id": "g3",
+          "title": "降压药怎么吃更安全",
+          "author": "心内科 · 王志强",
+          "tone": "photo",
+          "audio": true,
+          "video": false,
+          "time": "06:20",
+          "tag": "高血压"
+        },
+        {
+          "id": "g4",
+          "title": "血压管理",
+          "author": "慢病管理团队",
+          "tone": "wave",
+          "audio": true,
+          "video": false,
+          "time": "03:20",
+          "tag": "高血压"
+        },
+        {
+          "id": "g5",
+          "title": "运动前先测血压",
+          "author": "康复科 · 张敏",
+          "tone": "video",
+          "audio": true,
+          "video": true,
+          "time": "04:10",
+          "tag": "运动"
+        },
+        {
+          "id": "g6",
+          "title": "情绪与血压管理",
+          "author": "心理科 · 周敏",
+          "tone": "wave",
+          "audio": true,
+          "video": false,
+          "time": "05:00",
+          "tag": "心理"
+        },
+        {
+          "id": "g7",
+          "title": "低血糖的识别与急救",
+          "author": "内分泌科 · 刘芳",
+          "tone": "photo",
+          "audio": false,
+          "video": true,
+          "time": "07:30",
+          "tag": "急救"
+        }
+      ]
+    }
+  },
+  "GET /device/list": {
+    "code": 0,
+    "msg": "ok",
+    "data": [
+      {
+        "id": "w1",
+        "name": "智能手表",
+        "model": "HUAWEI Watch D",
+        "online": true,
+        "battery": 68,
+        "syncAt": "今天 08:30",
+        "types": [
+          "心率",
+          "血氧",
+          "步数",
+          "睡眠"
+        ]
+      },
+      {
+        "id": "b1",
+        "name": "电子血压计",
+        "model": "OMRON HEM-7361T",
+        "online": false,
+        "battery": 42,
+        "syncAt": "昨天 07:10",
+        "types": [
+          "血压",
+          "脉搏"
+        ]
+      },
+      {
+        "id": "g1",
+        "name": "动态血糖仪",
+        "model": "雅培 瞬感 3",
+        "online": true,
+        "battery": 85,
+        "syncAt": "今天 07:20",
+        "types": [
+          "血糖",
+          "趋势"
+        ]
+      }
+    ]
+  },
+  "GET /emr/list": {
+    "code": 0,
+    "msg": "ok",
+    "data": []
+  },
+  "GET /chat/history": {
+    "code": 0,
+    "msg": "ok",
+    "data": [
+      {
+        "id": "c1",
+        "role": "user",
+        "type": "text",
+        "text": "我今天血压怎么样？"
+      },
+      {
+        "id": "c2",
+        "role": "ai",
+        "type": "text",
+        "text": "您今天早上 8 点测了血压，120/80 mmHg，属于达标范围。最近 7 天平均血压 135/85，继续保持。",
+        "action": {
+          "text": "查看趋势图",
+          "url": "/pages/monitor/monitor"
+        }
+      },
+      {
+        "id": "c3",
+        "role": "ai",
+        "type": "alert",
+        "title": "高危提醒",
+        "text": "血压极高，建议立即休息并联系医生，必要时拨打 120",
+        "action": {
+          "text": "一键拨打 120",
+          "phone": "120"
+        }
+      }
+    ]
+  },
+  "GET /chat/quick-questions": {
+    "code": 0,
+    "msg": "ok",
+    "data": [
+      "我头晕",
+      "怎么吃药",
+      "血压高怎么办"
+    ]
+  },
+  "POST /chat/send": {
+    "code": 0,
+    "msg": "ok",
+    "data": {
+      "sessionId": "s001",
+      "answer": "（示例回答）血压 132/84 mmHg 属正常范围，建议继续每日早晚各测一次并记录。",
+      "citations": [
+        {
+          "title": "中国高血压防治指南（2023 年修订版）",
+          "source": "指南",
+          "url": ""
+        }
+      ],
+      "safetyTip": "本回答仅供参考，不能替代医生诊断。"
+    }
+  },
+  "GET /telemedicine/doctors": {
+    "code": 0,
+    "msg": "ok",
+    "data": {
+      "cities": [
+        "贵阳市",
+        "遵义市",
+        "成都市",
+        "重庆市",
+        "广州市",
+        "上海市"
+      ],
+      "records": [
+        {
+          "id": "rm1",
+          "name": "贵州省人民医院",
+          "city": "贵阳市",
+          "level": "三级甲等",
+          "enabled": true,
+          "since": "2025-06-01"
+        },
+        {
+          "id": "rm2",
+          "name": "四川大学华西医院",
+          "city": "成都市",
+          "level": "三级甲等",
+          "enabled": true,
+          "since": "2026-01-15"
+        },
+        {
+          "id": "rm3",
+          "name": "广州医科大学附属第一医院",
+          "city": "广州市",
+          "level": "三级甲等",
+          "enabled": true,
+          "since": "2026-03-08"
+        }
+      ],
+      "steps": [
+        {
+          "title": "线上备案",
+          "desc": "国家医保服务平台 / 本地医保小程序提交",
+          "done": true
+        },
+        {
+          "title": "选择就医地",
+          "desc": "已备案至成都市、广州市",
+          "done": true
+        },
+        {
+          "title": "持卡就医结算",
+          "desc": "出示医保电子凭证，直接结算",
+          "done": true
+        },
+        {
+          "title": "慢病长处方延续",
+          "desc": "最长可一次开具 12 周药量",
+          "done": false
+        }
+      ],
+      "medicines": [
+        {
+          "name": "厄贝沙坦片",
+          "spec": "150mg × 28 片",
+          "count": 2,
+          "canOpen": true
+        },
+        {
+          "name": "二甲双胍缓释片",
+          "spec": "0.5g × 30 片",
+          "count": 1,
+          "canOpen": true
+        },
+        {
+          "name": "阿托伐他汀钙片",
+          "spec": "20mg × 7 片",
+          "count": 3,
+          "canOpen": false
+        }
+      ]
+    }
+  },
+  "GET /patient/score-detail": {
+    "code": 0,
+    "msg": "ok",
+    "data": {
+      "score": 86,
+      "level": "良好",
+      "upgrade": "再连续打卡 3 天可升至 90+",
+      "items": [
+        {
+          "label": "用药依从性",
+          "score": 95,
+          "weight": "30%",
+          "color": "green"
+        },
+        {
+          "label": "指标达标率",
+          "score": 86,
+          "weight": "30%",
+          "color": "green"
+        },
+        {
+          "label": "设备数据连续上传",
+          "score": 90,
+          "weight": "20%",
+          "color": "green"
+        },
+        {
+          "label": "运动与饮食执行",
+          "score": 72,
+          "weight": "20%",
+          "color": "orange"
+        }
+      ]
+    }
+  },
+  "__meta__": {
+    "note": "本文件由 patient-miniprogram/utils/mock.js 自动导出，字段名与前端渲染完全一致，仅供后端对照实现与造测试数据，非正式接口定义。",
+    "generatedAt": "2026-11-17 09:19:15",
+    "endpoints": 26
+  }
+}
