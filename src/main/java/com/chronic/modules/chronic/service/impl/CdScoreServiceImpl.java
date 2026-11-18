@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.chronic.common.exception.ServiceException;
 import com.chronic.common.result.PageResult;
+import com.chronic.modules.chronic.dto.ScoreWeightSaveDTO;
 import com.chronic.modules.chronic.entity.CdHealthScore;
 import com.chronic.modules.chronic.entity.CdMeasure;
 import com.chronic.modules.chronic.entity.CdScoreWeight;
@@ -17,6 +18,7 @@ import com.chronic.modules.chronic.query.ScoreQuery;
 import com.chronic.modules.chronic.service.CdScoreService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
@@ -176,11 +178,48 @@ public class CdScoreServiceImpl extends ServiceImpl<CdHealthScoreMapper, CdHealt
     }
 
     @Override
-    public void saveWeight(CdScoreWeight weight) {
-        if (!StringUtils.hasText(weight.getDiseaseCode()) || !StringUtils.hasText(weight.getIndicatorCode())) {
-            throw new ServiceException("病种与指标不能为空");
+    @Transactional(rollbackFor = Exception.class)
+    public void saveDiseaseWeights(ScoreWeightSaveDTO dto) {
+        if (dto == null || !StringUtils.hasText(dto.getDiseaseCode())) {
+            throw new ServiceException("病种不能为空");
         }
-        weightMapper.insert(weight);
+        if (dto.getItems() == null || dto.getItems().isEmpty()) {
+            throw new ServiceException("请至少配置一个指标");
+        }
+        String diseaseCode = dto.getDiseaseCode().trim();
+        Set<String> codes = new LinkedHashSet<>();
+        BigDecimal total = BigDecimal.ZERO;
+        for (ScoreWeightSaveDTO.Item item : dto.getItems()) {
+            if (item == null || !StringUtils.hasText(item.getIndicatorCode()) || !StringUtils.hasText(item.getIndicatorName())) {
+                throw new ServiceException("指标名称与指标编码不能为空");
+            }
+            String code = item.getIndicatorCode().trim();
+            if (!codes.add(code)) {
+                throw new ServiceException("指标编码[" + code + "]重复");
+            }
+            BigDecimal w = item.getWeight();
+            if (w == null) {
+                throw new ServiceException("指标[" + item.getIndicatorName().trim() + "]的权重不能为空");
+            }
+            if (w.compareTo(BigDecimal.ZERO) < 0 || w.compareTo(BigDecimal.ONE) > 0) {
+                throw new ServiceException("指标[" + item.getIndicatorName().trim() + "]的权重必须在0~1之间");
+            }
+            total = total.add(w);
+        }
+        if (total.subtract(BigDecimal.ONE).abs().compareTo(new BigDecimal("0.0001")) > 0) {
+            throw new ServiceException("该病种指标权重之和必须为1，当前为" + total.stripTrailingZeros().toPlainString());
+        }
+
+        weightMapper.delete(new LambdaQueryWrapper<CdScoreWeight>()
+                .eq(CdScoreWeight::getDiseaseCode, diseaseCode));
+        for (ScoreWeightSaveDTO.Item item : dto.getItems()) {
+            CdScoreWeight weight = new CdScoreWeight();
+            weight.setDiseaseCode(diseaseCode);
+            weight.setIndicatorCode(item.getIndicatorCode().trim());
+            weight.setIndicatorName(item.getIndicatorName().trim());
+            weight.setWeight(item.getWeight().setScale(2, RoundingMode.HALF_UP));
+            weightMapper.insert(weight);
+        }
     }
 
     @Override

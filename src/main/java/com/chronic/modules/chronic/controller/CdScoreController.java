@@ -2,12 +2,14 @@ package com.chronic.modules.chronic.controller;
 
 import com.chronic.common.result.PageResult;
 import com.chronic.common.result.Result;
+import com.chronic.modules.chronic.dto.ScoreWeightSaveDTO;
 import com.chronic.modules.chronic.entity.CdHealthScore;
 import com.chronic.modules.chronic.entity.CdScoreWeight;
 import com.chronic.modules.chronic.query.ScoreQuery;
 import com.chronic.modules.chronic.service.CdScoreService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -56,11 +58,11 @@ public class CdScoreController {
         return Result.success(scoreService.weightList(diseaseCode));
     }
 
-    @Operation(summary = "新增评分权重")
+    @Operation(summary = "修改评分权重（按病种整体覆盖，权重之和须为1）")
     @PreAuthorize("@ss.hasPermi('chronic:score:list')")
-    @PostMapping("/weight")
-    public Result<Void> saveWeight(@RequestBody CdScoreWeight weight) {
-        scoreService.saveWeight(weight);
+    @PostMapping("/weight/save")
+    public Result<Void> saveWeights(@Valid @RequestBody ScoreWeightSaveDTO dto) {
+        scoreService.saveDiseaseWeights(dto);
         return Result.success();
     }
 }

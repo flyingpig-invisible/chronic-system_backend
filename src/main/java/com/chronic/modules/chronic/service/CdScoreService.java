@@ -2,6 +2,7 @@ package com.chronic.modules.chronic.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.chronic.common.result.PageResult;
+import com.chronic.modules.chronic.dto.ScoreWeightSaveDTO;
 import com.chronic.modules.chronic.entity.CdHealthScore;
 import com.chronic.modules.chronic.entity.CdScoreWeight;
 import com.chronic.modules.chronic.query.ScoreQuery;
@@ -17,7 +18,10 @@ public interface CdScoreService extends IService<CdHealthScore> {
 
     List<CdScoreWeight> weightList(String diseaseCode);
 
-    void saveWeight(CdScoreWeight weight);
+    /**
+     * 覆盖保存某个病种的全部指标权重，要求权重之和为 1
+     */
+    void saveDiseaseWeights(ScoreWeightSaveDTO dto);
 
     Map<String, Object> trend(Long patientId);
 
