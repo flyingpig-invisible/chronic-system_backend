@@ -115,6 +115,16 @@ public class CdPatientServiceImpl implements CdPatientService {
         }
         List<PatientVO> list = toVOList(List.of(patient));
         PatientVO vo = list.get(0);
+        // 风险等级/风险评分以最近一次评分记录为准
+        CdHealthScore latest = healthScoreMapper.selectOne(Wrappers.<CdHealthScore>lambdaQuery()
+                .eq(CdHealthScore::getPatientId, patientId)
+                .orderByDesc(CdHealthScore::getCalcTime)
+                .orderByDesc(CdHealthScore::getScoreId)
+                .last("limit 1"));
+        if (latest != null) {
+            vo.setRiskScore(latest.getTotalScore());
+            vo.setRiskLevel(latest.getRiskLevel());
+        }
 
         // 填充病种编码
         List<CdPatientDisease> diseases = patientDiseaseMapper.selectList(
@@ -328,9 +338,16 @@ public class CdPatientServiceImpl implements CdPatientService {
         }
         Map<Long, String> deptNameMap = deptResolver.deptNames(doctorDeptMap.values());
 
+        Map<Long, CdHealthScore> latestScoreMap = latestScores(patientIds);
+
         for (CdPatient p : patients) {
             PatientVO vo = new PatientVO();
             BeanUtils.copyProperties(p, vo);
+            CdHealthScore latestScore = latestScoreMap.get(p.getPatientId());
+            if (latestScore != null) {
+                vo.setRiskScore(latestScore.getTotalScore());
+                vo.setRiskLevel(latestScore.getRiskLevel());
+            }
             vo.setDoctorName(doctorNameMap.get(p.getDoctorId()));
             Long ownerDeptId = doctorDeptMap.get(p.getDoctorId());
             vo.setDeptId(ownerDeptId);
@@ -340,6 +357,22 @@ public class CdPatientServiceImpl implements CdPatientService {
             vos.add(vo);
         }
         return vos;
+    }
+
+    /** 批量取每个患者最近一次评分（风险等级以此为准） */
+    private Map<Long, CdHealthScore> latestScores(List<Long> patientIds) {
+        Map<Long, CdHealthScore> result = new HashMap<>();
+        if (patientIds == null || patientIds.isEmpty()) {
+            return result;
+        }
+        List<CdHealthScore> scores = healthScoreMapper.selectList(Wrappers.<CdHealthScore>lambdaQuery()
+                .in(CdHealthScore::getPatientId, patientIds)
+                .orderByDesc(CdHealthScore::getCalcTime)
+                .orderByDesc(CdHealthScore::getScoreId));
+        for (CdHealthScore score : scores) {
+            result.putIfAbsent(score.getPatientId(), score);
+        }
+        return result;
     }
 
     /** 保存患者病种关联 */

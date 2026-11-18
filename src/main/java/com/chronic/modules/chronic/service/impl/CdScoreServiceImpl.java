@@ -8,10 +8,12 @@ import com.chronic.common.result.PageResult;
 import com.chronic.modules.chronic.dto.ScoreWeightSaveDTO;
 import com.chronic.modules.chronic.entity.CdHealthScore;
 import com.chronic.modules.chronic.entity.CdMeasure;
+import com.chronic.modules.chronic.entity.CdPatient;
 import com.chronic.modules.chronic.entity.CdScoreWeight;
 import com.chronic.modules.chronic.entity.CdWarning;
 import com.chronic.modules.chronic.mapper.CdHealthScoreMapper;
 import com.chronic.modules.chronic.mapper.CdMeasureMapper;
+import com.chronic.modules.chronic.mapper.CdPatientMapper;
 import com.chronic.modules.chronic.mapper.CdScoreWeightMapper;
 import com.chronic.modules.chronic.mapper.CdWarningMapper;
 import com.chronic.modules.chronic.query.ScoreQuery;
@@ -42,6 +44,9 @@ public class CdScoreServiceImpl extends ServiceImpl<CdHealthScoreMapper, CdHealt
 
     @Autowired
     private CdScoreWeightMapper weightMapper;
+
+    @Autowired
+    private CdPatientMapper patientMapper;
 
     /** 指标参考区间与危险区间：code -> [正常下限, 正常上限, 危险下限, 危险上限] */
     private static final Map<String, double[]> RANGE = new HashMap<>();
@@ -158,6 +163,8 @@ public class CdScoreServiceImpl extends ServiceImpl<CdHealthScoreMapper, CdHealt
         score.setTriggerType("3");
         score.setCalcTime(LocalDateTime.now());
         save(score);
+        // 评分记录是风险等级的权威来源，同步回写患者档案，使档案页展示最近一次计算结果
+        syncPatientRisk(patientId, totalScore, riskLevel);
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("scoreId", score.getScoreId());
@@ -168,6 +175,15 @@ public class CdScoreServiceImpl extends ServiceImpl<CdHealthScoreMapper, CdHealt
         result.put("detail", detail);
         result.put("calcTime", score.getCalcTime());
         return result;
+    }
+
+    /** 将最新评分结果同步到患者档案（等级与分数一并覆盖，不再只升不降） */
+    private void syncPatientRisk(Long patientId, int totalScore, String riskLevel) {
+        CdPatient patient = new CdPatient();
+        patient.setPatientId(patientId);
+        patient.setRiskScore(totalScore);
+        patient.setRiskLevel(riskLevel);
+        patientMapper.updateById(patient);
     }
 
     @Override
