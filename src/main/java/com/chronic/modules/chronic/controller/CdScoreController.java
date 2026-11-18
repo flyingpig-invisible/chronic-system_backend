@@ -80,4 +80,19 @@ public class CdScoreController {
         scoreService.saveDiseaseWeights(dto);
         return Result.success();
     }
+
+    @Operation(summary = "查询病种综合权重（多病共存时各病种占比，未配置则平分）")
+    @PreAuthorize("@ss.hasPermi('chronic:score:list')")
+    @GetMapping("/weight/combined")
+    public Result<List<Map<String, Object>>> combinedWeights(@RequestParam List<String> diseaseCodes) {
+        return Result.success(scoreService.diseaseWeightList(diseaseCodes));
+    }
+
+    @Operation(summary = "修改病种综合权重（权重之和须为1）")
+    @PreAuthorize("@ss.hasPermi('chronic:score:list')")
+    @PostMapping("/weight/combined/save")
+    public Result<Void> saveCombinedWeights(@RequestBody List<ScoreWeightSaveDTO.DiseaseItem> items) {
+        scoreService.saveCombinedDiseaseWeights(items);
+        return Result.success();
+    }
 }
