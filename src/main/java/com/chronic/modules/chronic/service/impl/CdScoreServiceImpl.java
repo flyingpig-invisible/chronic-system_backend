@@ -13,6 +13,7 @@ import com.chronic.modules.chronic.entity.CdPatient;
 import com.chronic.modules.chronic.entity.CdPatientDisease;
 import com.chronic.modules.chronic.entity.CdScoreWeight;
 import com.chronic.modules.chronic.entity.CdWarning;
+import com.chronic.modules.chronic.entity.CdWarningRule;
 import com.chronic.modules.chronic.mapper.CdDiseaseWeightMapper;
 import com.chronic.modules.chronic.mapper.CdHealthScoreMapper;
 import com.chronic.modules.chronic.mapper.CdMeasureMapper;
@@ -22,6 +23,7 @@ import com.chronic.modules.chronic.mapper.CdScoreWeightMapper;
 import com.chronic.modules.chronic.mapper.CdWarningMapper;
 import com.chronic.modules.chronic.query.ScoreQuery;
 import com.chronic.modules.chronic.service.CdScoreService;
+import com.chronic.modules.chronic.service.CdWarningService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -58,6 +60,9 @@ public class CdScoreServiceImpl extends ServiceImpl<CdHealthScoreMapper, CdHealt
 
     @Autowired
     private CdDiseaseWeightMapper diseaseWeightMapper;
+
+    @Autowired
+    private CdWarningService warningService;
 
     /** 病种编码 -> 名称 */
     private static final Map<String, String> DISEASE_NAME = Map.of(
@@ -177,9 +182,41 @@ public class CdScoreServiceImpl extends ServiceImpl<CdHealthScoreMapper, CdHealt
             detail.putAll((Map<String, Object>) one.get("detail"));
         }
 
-        int totalScore = (int) Math.round(weightedSum);
-        totalScore = Math.max(0, Math.min(100, totalScore));
+        int baseScore = (int) Math.round(weightedSum);
+        baseScore = Math.max(0, Math.min(100, baseScore));
+
+        // 预警规则加分：每个指标最近一次监测值命中中危规则 +10，命中高危规则 +20（低危不加分）
+        List<Map<String, Object>> warningHits = new ArrayList<>();
+        int warningBonus = 0;
+        for (CdMeasure m : latest.values()) {
+            CdWarningRule hit = warningService.matchRuleCode(m.getIndicatorCode(), m.getValue());
+            if (hit == null || hit.getWarningLevel() == null
+                || !("2".equals(hit.getWarningLevel()) || "3".equals(hit.getWarningLevel()))) {
+                continue;
+            }
+            int bonus = "3".equals(hit.getWarningLevel()) ? 20 : 10;
+            warningBonus += bonus;
+            Map<String, Object> hitInfo = new LinkedHashMap<>();
+            hitInfo.put("indicatorCode", m.getIndicatorCode());
+            hitInfo.put("indicatorName", m.getIndicatorName());
+            hitInfo.put("value", m.getValue());
+            hitInfo.put("unit", m.getUnit());
+            hitInfo.put("warningLevel", hit.getWarningLevel());
+            hitInfo.put("warningLevelName", levelName(hit.getWarningLevel()));
+            hitInfo.put("thresholdDesc", hit.getThresholdDesc());
+            hitInfo.put("bonus", bonus);
+            warningHits.add(hitInfo);
+        }
+
+        int totalScore = Math.max(0, Math.min(100, baseScore + warningBonus));
         String riskLevel = levelOf(totalScore);
+
+        // 基础分与加分摘要也写入明细，便于历史记录回看评分构成
+        Map<String, Object> summary = new LinkedHashMap<>();
+        summary.put("baseScore", baseScore);
+        summary.put("warningBonus", warningBonus);
+        summary.put("warningHits", warningHits);
+        detail.put("_summary", summary);
 
         CdHealthScore score = new CdHealthScore();
         score.setPatientId(patientId);
@@ -200,6 +237,9 @@ public class CdScoreServiceImpl extends ServiceImpl<CdHealthScoreMapper, CdHealt
         result.put("riskLevelName", levelName(riskLevel));
         result.put("detail", detail);
         result.put("diseases", diseaseDetails);
+        result.put("baseScore", baseScore);
+        result.put("warningBonus", warningBonus);
+        result.put("warningHits", warningHits);
         result.put("calcTime", score.getCalcTime());
         return result;
     }

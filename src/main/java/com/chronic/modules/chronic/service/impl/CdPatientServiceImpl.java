@@ -124,6 +124,13 @@ public class CdPatientServiceImpl implements CdPatientService {
         if (latest != null) {
             vo.setRiskScore(latest.getTotalScore());
             vo.setRiskLevel(latest.getRiskLevel());
+        } else {
+            // 无评分记录时，风险等级至少反映未处理预警的最高级别；评分算过之后以评分为准
+            int warnLevel = maxUnhandledWarningLevel(patientId);
+            int curLevel = StringUtils.hasText(vo.getRiskLevel()) ? Integer.parseInt(vo.getRiskLevel()) : 1;
+            if (warnLevel > curLevel) {
+                vo.setRiskLevel(String.valueOf(warnLevel));
+            }
         }
 
         // 填充病种编码
@@ -131,6 +138,20 @@ public class CdPatientServiceImpl implements CdPatientService {
                 Wrappers.<CdPatientDisease>lambdaQuery().eq(CdPatientDisease::getPatientId, patientId));
         vo.setDiseaseCodes(diseases.stream().map(CdPatientDisease::getDiseaseCode).collect(Collectors.toList()));
         return vo;
+    }
+
+    /** 未处理/处理中的预警最高级别，无预警返回 0 */
+    private int maxUnhandledWarningLevel(Long patientId) {
+        List<CdWarning> warnings = warningMapper.selectList(Wrappers.<CdWarning>lambdaQuery()
+                .eq(CdWarning::getPatientId, patientId)
+                .in(CdWarning::getHandleStatus, Arrays.asList("0", "1")));
+        int max = 0;
+        for (CdWarning w : warnings) {
+            if (w.getWarningLevel() != null) {
+                max = Math.max(max, Integer.parseInt(w.getWarningLevel()));
+            }
+        }
+        return max;
     }
 
     @Override

@@ -8,6 +8,7 @@ import com.chronic.modules.chronic.entity.CdWarningRule;
 import com.chronic.modules.chronic.mapper.CdMeasureMapper;
 import com.chronic.modules.chronic.mapper.CdPatientMapper;
 import com.chronic.modules.chronic.mapper.CdWarningRuleMapper;
+import com.chronic.modules.chronic.service.CdScoreService;
 import com.chronic.modules.chronic.service.CdWarningService;
 import com.chronic.modules.miniapp.dto.MpMeasureDTO;
 import com.chronic.modules.miniapp.service.MpDataService;
@@ -42,6 +43,7 @@ public class MpMeasureServiceImpl implements MpMeasureService {
     private final CdPatientMapper patientMapper;
     private final CdWarningRuleMapper ruleMapper;
     private final CdWarningService warningService;
+    private final CdScoreService scoreService;
 
     private static final DateTimeFormatter DTF = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -137,6 +139,13 @@ public class MpMeasureServiceImpl implements MpMeasureService {
         pu.setPatientId(patient.getPatientId());
         pu.setLastMeasureTime(measureTime);
         patientMapper.updateById(pu);
+
+        // 上报后按最新监测数据 + 预警规则重算评分，并同步回写患者风险等级
+        try {
+            scoreService.calcScore(patient.getPatientId());
+        } catch (Exception e) {
+            log.warn("患者[{}] 小程序上报后重算评分失败：{}", patient.getPatientId(), e.getMessage());
+        }
 
         result.setSavedCount(items.size());
         result.setSkippedCount(INDICATORS.size() - items.size());
