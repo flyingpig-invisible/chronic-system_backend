@@ -24,6 +24,8 @@ import com.chronic.modules.chronic.mapper.CdWarningMapper;
 import com.chronic.modules.chronic.query.ScoreQuery;
 import com.chronic.modules.chronic.service.CdScoreService;
 import com.chronic.modules.chronic.service.CdWarningService;
+import com.chronic.modules.system.entity.SysIndicator;
+import com.chronic.modules.system.mapper.SysIndicatorMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -63,6 +65,9 @@ public class CdScoreServiceImpl extends ServiceImpl<CdHealthScoreMapper, CdHealt
 
     @Autowired
     private CdWarningService warningService;
+
+    @Autowired
+    private SysIndicatorMapper indicatorMapper;
 
     /** 病种编码 -> 名称 */
     private static final Map<String, String> DISEASE_NAME = Map.of(
@@ -414,13 +419,25 @@ public class CdScoreServiceImpl extends ServiceImpl<CdHealthScoreMapper, CdHealt
             throw new ServiceException("该病种指标权重之和必须为1，当前为" + total.stripTrailingZeros().toPlainString());
         }
 
+        // 指标必须存在于系统指标库（系统管理 → 指标管理），名称以指标库为准
+        List<SysIndicator> indicatorList = indicatorMapper.selectList(new LambdaQueryWrapper<SysIndicator>()
+                .in(SysIndicator::getIndicatorCode, codes));
+        Map<String, SysIndicator> indicatorMap = indicatorList.stream()
+                .collect(Collectors.toMap(SysIndicator::getIndicatorCode, i -> i, (a, b) -> a));
+        for (String code : codes) {
+            if (!indicatorMap.containsKey(code)) {
+                throw new ServiceException("指标[" + code + "]不在系统指标库中，请先在指标管理中维护");
+            }
+        }
+
         weightMapper.delete(new LambdaQueryWrapper<CdScoreWeight>()
                 .eq(CdScoreWeight::getDiseaseCode, diseaseCode));
         for (ScoreWeightSaveDTO.Item item : dto.getItems()) {
+            String code = item.getIndicatorCode().trim();
             CdScoreWeight weight = new CdScoreWeight();
             weight.setDiseaseCode(diseaseCode);
-            weight.setIndicatorCode(item.getIndicatorCode().trim());
-            weight.setIndicatorName(item.getIndicatorName().trim());
+            weight.setIndicatorCode(code);
+            weight.setIndicatorName(indicatorMap.get(code).getIndicatorName());
             weight.setWeight(item.getWeight().setScale(2, RoundingMode.HALF_UP));
             weightMapper.insert(weight);
         }
