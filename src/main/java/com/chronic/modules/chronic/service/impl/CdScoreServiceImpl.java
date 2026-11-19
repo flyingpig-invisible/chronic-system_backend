@@ -95,7 +95,6 @@ public class CdScoreServiceImpl extends ServiceImpl<CdHealthScoreMapper, CdHealt
         w.eq(query.getPatientId() != null, CdHealthScore::getPatientId, query.getPatientId())
          .eq(StringUtils.hasText(query.getRiskLevel()), CdHealthScore::getRiskLevel, query.getRiskLevel())
          .eq(StringUtils.hasText(query.getTriggerType()), CdHealthScore::getTriggerType, query.getTriggerType())
-         .like(StringUtils.hasText(query.getDiseaseCode()), CdHealthScore::getDetailJson, "\"diseaseCode\":\"" + query.getDiseaseCode() + "\"")
          .orderByDesc(CdHealthScore::getCalcTime);
         Page<CdHealthScore> page = page(new Page<>(query.getPageNum(), query.getPageSize()), w);
         fillPatientName(page.getRecords());
@@ -179,7 +178,8 @@ public class CdScoreServiceImpl extends ServiceImpl<CdHealthScoreMapper, CdHealt
             int diseaseScore = (Integer) one.get("diseaseScore");
             weightedSum += diseaseScore * diseaseWeight;
             diseaseDetails.put(code, one);
-            detail.putAll((Map<String, Object>) one.get("detail"));
+            // 明细按病种分组保存：多个病种共用同一批指标编码，扁平合并会互相覆盖，只留下最后一个病种
+            detail.put(code, one.get("detail"));
         }
 
         int baseScore = (int) Math.round(weightedSum);

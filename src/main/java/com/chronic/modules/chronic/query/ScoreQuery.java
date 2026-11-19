@@ -13,6 +13,4 @@ public class ScoreQuery extends PageQuery {
     private String riskLevel;
     private String triggerType;
 
-    @Schema(description = "病种编码（按评分明细中命中的病种筛选）")
-    private String diseaseCode;
 }
