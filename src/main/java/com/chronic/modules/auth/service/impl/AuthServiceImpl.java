@@ -7,9 +7,8 @@ import com.chronic.modules.auth.dto.LoginDTO;
 import com.chronic.modules.auth.service.AuthService;
 import com.chronic.modules.auth.vo.LoginVO;
 import com.chronic.modules.auth.vo.UserInfoVO;
-import com.chronic.modules.system.entity.SysMenu;
 import com.chronic.modules.system.entity.SysUser;
-import com.chronic.modules.system.mapper.SysMenuMapper;
+import com.chronic.modules.system.mapper.SysRoleMapper;
 import com.chronic.modules.system.mapper.SysDeptMapper;
 import com.chronic.modules.system.entity.SysDept;
 import com.chronic.modules.system.mapper.SysUserMapper;
@@ -19,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -35,10 +35,10 @@ import java.util.List;
 public class AuthServiceImpl implements AuthService {
 
     private final SysUserMapper userMapper;
-    private final SysMenuMapper menuMapper;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
     private final SysDeptMapper deptMapper;
+    private final SysRoleMapper roleMapper;
 
     @Override
     public LoginVO login(LoginDTO dto) {
@@ -61,7 +61,9 @@ public class AuthServiceImpl implements AuthService {
         update.setLoginDate(LocalDateTime.now());
         userMapper.updateById(update);
 
-        String token = jwtUtils.createToken(user.getUserId(), user.getUsername(), "sys",
+        String userType = StringUtils.hasText(user.getUserType()) ? user.getUserType() : "1";
+        // user_type 写入真实值（1普通 2系统管理员），权限服务据此识别系统管理员
+        String token = jwtUtils.createToken(user.getUserId(), user.getUsername(), userType,
                 user.getRealName(), null, user.getDeptId());
 
         LoginVO vo = new LoginVO();
@@ -95,20 +97,17 @@ public class AuthServiceImpl implements AuthService {
             vo.setDeptName(dept == null ? null : dept.getDeptName());
         }
 
-        // 超管拥有全部权限
+        // 系统管理员拥有全部权限；其他用户按角色绑定的菜单取权限
         List<String> roles = new ArrayList<>();
         List<String> permissions = new ArrayList<>();
         if ("2".equals(user.getUserType())) {
             roles.add("admin");
             permissions.add("*:*:*");
         } else {
-            roles.add("doctor");
-            List<SysMenu> menus = menuMapper.selectList(Wrappers.<SysMenu>lambdaQuery()
-                    .eq(SysMenu::getMenuType, "F")
-                    .isNotNull(SysMenu::getPerms));
-            menus.forEach(m -> permissions.add(m.getPerms()));
-        }
-        vo.setRoles(roles);
+            List<String> roleKeys = roleMapper.selectRoleKeysByUserId(user.getUserId());
+            roles.addAll(roleKeys.isEmpty() ? List.of("doctor") : roleKeys);
+            permissions.addAll(roleMapper.selectPermissionsByUserId(user.getUserId()));
+        }        vo.setRoles(roles);
         vo.setPermissions(permissions);
         return vo;
     }

@@ -1,6 +1,13 @@
 package com.chronic.security;
 
+import com.chronic.modules.system.entity.SysRole;
+import com.chronic.modules.system.mapper.SysRoleMapper;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 权限校验服务，供 @PreAuthorize("@ss.hasPermi('xxx')") 使用
@@ -8,30 +15,58 @@ import org.springframework.stereotype.Service;
  * @author chronic
  */
 @Service("ss")
+@RequiredArgsConstructor
 public class PermissionService {
+
+    private final SysRoleMapper roleMapper;
 
     /**
      * 校验权限
-     * 超管（拥有 *:*:* ）放行全部，其余按标识匹配
+     * - 系统管理员（user_type=2）拥有全部权限
+     * - 小程序用户不走后台权限体系
+     * - 其他后台用户按角色绑定的菜单权限标识匹配
      */
     public boolean hasPermi(String permission) {
         LoginUser user = SecurityUtils.getLoginUserOrNull();
         if (user == null) {
             return false;
         }
-        // 小程序用户不走此权限体系
         if ("mp".equals(user.getUserType())) {
             return true;
         }
-        // 管理员放行
-        if ("2".equals(user.getMpRole())) {
+        if (isSysAdmin(user)) {
             return true;
         }
-        return true;
+        List<String> permissions = permissionsOf(user.getUserId());
+        return permissions.contains("*:*:*") || permissions.contains(permission);
     }
 
-    /** 校验角色 */
+    /** 校验角色标识 */
     public boolean hasRole(String role) {
-        return SecurityUtils.getLoginUserOrNull() != null;
+        LoginUser user = SecurityUtils.getLoginUserOrNull();
+        if (user == null) {
+            return false;
+        }
+        if (isSysAdmin(user)) {
+            return "admin".equals(role) || "superadmin".equals(role);
+        }
+        return roleKeysOf(user.getUserId()).contains(role);
+    }
+
+    /** 是否系统管理员：仅 user_type=2 的系统用户 */
+    public boolean isSysAdmin(LoginUser user) {
+        return user != null && !"mp".equals(user.getUserType()) && "2".equals(user.getUserType());
+    }
+
+    private List<String> permissionsOf(Long userId) {
+        return roleMapper.selectPermissionsByUserId(userId);
+    }
+
+    private List<String> roleKeysOf(Long userId) {
+        return roleMapper.selectList(Wrappers.<SysRole>lambdaQuery()
+                        .inSql(SysRole::getRoleId,
+                                "SELECT role_id FROM sys_user_role WHERE user_id = " + userId)
+                        .eq(SysRole::getStatus, "0"))
+                .stream().map(SysRole::getRoleKey).collect(Collectors.toList());
     }
 }

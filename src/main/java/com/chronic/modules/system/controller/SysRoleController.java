@@ -74,7 +74,7 @@ public class SysRoleController {
     }
 
     @Operation(summary = "分配菜单权限")
-    @PreAuthorize("@ss.hasPermi('system:role:edit')")
+    @PreAuthorize("@ss.hasPermi('system:role:auth')")
     @PutMapping("/{roleId}/menu")
     public Result<Void> setMenu(@PathVariable Long roleId, @RequestBody Map<String, List<Long>> body) {
         roleService.setMenuIds(roleId, body.get("menuIds"));
