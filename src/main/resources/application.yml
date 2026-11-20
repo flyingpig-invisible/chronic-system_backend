@@ -42,6 +42,9 @@ mybatis-plus:
 
 # JWT 配置
 chronic:
+  # ⚠️ 本地演示开关：true 时 /device/** 与 /mp/device/** 免登录，方便在 Knife4j 里直接调试
+  #    仅用于课程演示与本机联调，提交/部署前必须改成 false
+  dev-open: true
   jwt:
     secret: chronicDiseaseManagementSystemSecretKey2026ForJwtTokenSigning
     expire: 604800000
