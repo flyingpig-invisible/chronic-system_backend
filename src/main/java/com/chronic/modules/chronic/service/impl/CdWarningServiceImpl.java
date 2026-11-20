@@ -194,29 +194,12 @@ public class CdWarningServiceImpl implements CdWarningService {
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public void checkAndCreateWarning(Long patientId, String patientName, String indicatorCode,
                                       BigDecimal value, String unit, Long measureId) {
         if (value == null) {
             return;
         }
-        // 查询该指标所有启用规则
-        List<CdWarningRule> rules = ruleMapper.selectList(Wrappers.<CdWarningRule>lambdaQuery()
-                .eq(CdWarningRule::getIndicatorCode, indicatorCode)
-                .eq(CdWarningRule::getStatus, "0"));
-        if (rules.isEmpty()) {
-            return;
-        }
-
-        // 命中最严重的一条
-        CdWarningRule matched = null;
-        for (CdWarningRule rule : rules) {
-            if (matchRule(rule, value)) {
-                if (matched == null || rule.getWarningLevel().compareTo(matched.getWarningLevel()) > 0) {
-                    matched = rule;
-                }
-            }
-        }
+        CdWarningRule matched = matchRuleCode(indicatorCode, value);
         if (matched == null) {
             return;
         }
@@ -245,20 +228,36 @@ public class CdWarningServiceImpl implements CdWarningService {
             measureMapper.updateById(m);
         }
 
-        // 更新患者待处理预警数与风险等级
+        // 更新患者待处理预警数；风险评分/等级统一由评分计算按预警规则得出，此处不再抬高
         CdPatient patient = patientMapper.selectById(patientId);
         if (patient != null) {
             CdPatient pu = new CdPatient();
             pu.setPatientId(patientId);
             pu.setPendingWarningCount((patient.getPendingWarningCount() == null ? 0 : patient.getPendingWarningCount()) + 1);
-            if (matched.getWarningLevel().compareTo(patient.getRiskLevel() == null ? "1" : patient.getRiskLevel()) > 0) {
-                pu.setRiskLevel(matched.getWarningLevel());
-            }
             patientMapper.updateById(pu);
         }
 
         log.info("患者[{}] 指标[{}={}] 触发 {} 预警", patientName, indicatorCode, value,
                 matched.getWarningLevel());
+    }
+
+    @Override
+    public CdWarningRule matchRuleCode(String indicatorCode, BigDecimal value) {
+        if (!StringUtils.hasText(indicatorCode) || value == null) {
+            return null;
+        }
+        List<CdWarningRule> rules = ruleMapper.selectList(Wrappers.<CdWarningRule>lambdaQuery()
+                .eq(CdWarningRule::getIndicatorCode, indicatorCode)
+                .eq(CdWarningRule::getStatus, "0"));
+        CdWarningRule matched = null;
+        for (CdWarningRule rule : rules) {
+            if (matchRule(rule, value)) {
+                if (matched == null || rule.getWarningLevel().compareTo(matched.getWarningLevel()) > 0) {
+                    matched = rule;
+                }
+            }
+        }
+        return matched;
     }
 
     /** 判断是否命中规则 */

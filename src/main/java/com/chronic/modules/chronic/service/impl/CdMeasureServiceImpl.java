@@ -14,10 +14,14 @@ import com.chronic.modules.chronic.mapper.CdWarningMapper;
 import com.chronic.modules.chronic.query.MeasureQuery;
 import com.chronic.modules.chronic.vo.MeasureGroupVO;
 import com.chronic.modules.chronic.service.CdMeasureService;
+import com.chronic.modules.chronic.service.CdScoreService;
+import com.chronic.modules.chronic.service.CdWarningService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
@@ -40,6 +44,8 @@ public class CdMeasureServiceImpl implements CdMeasureService {
     private final CdMeasureMapper measureMapper;
     private final CdPatientMapper patientMapper;
     private final CdWarningMapper warningMapper;
+    private final CdWarningService warningService;
+    private final CdScoreService scoreService;
 
     private static final DateTimeFormatter DTF = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -95,7 +101,34 @@ public class CdMeasureServiceImpl implements CdMeasureService {
         update.setLastMeasureTime(measure.getMeasureTime());
         patientMapper.updateById(update);
 
+        // 手工录入同样做预警判定：命中规则立即生成预警并标记该条监测异常
+        warningService.checkAndCreateWarning(patient.getPatientId(), patient.getName(),
+                measure.getIndicatorCode(), measure.getValue(), measure.getUnit(), measure.getMeasureId());
+
+        // 重新计算评分：评分 = 指标风险加权分 + 预警命中加分，并同步回写患者档案
+        // 放到事务提交之后执行，保证重算时能读到刚写入的监测与预警数据
+        Long patientId = patient.getPatientId();
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    calcAndSyncScoreQuietly(patientId);
+                }
+            });
+        } else {
+            calcAndSyncScoreQuietly(patientId);
+        }
+
         return measure.getMeasureId();
+    }
+
+    /** 录入后重算评分，失败不影响监测数据保存 */
+    private void calcAndSyncScoreQuietly(Long patientId) {
+        try {
+            scoreService.calcScore(patientId);
+        } catch (Exception e) {
+            log.warn("患者[{}] 录入监测后重算评分失败：{}", patientId, e.getMessage());
+        }
     }
 
     @Override

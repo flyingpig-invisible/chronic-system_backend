@@ -70,8 +70,15 @@ public class CdPatientServiceImpl implements CdPatientService {
                    .like(StringUtils.hasText(query.getPatientNo()), CdPatient::getPatientNo, query.getPatientNo());
         }
 
-        wrapper.eq(StringUtils.hasText(query.getRiskLevel()), CdPatient::getRiskLevel, query.getRiskLevel())
-               .eq(StringUtils.hasText(query.getStatus()), CdPatient::getStatus, query.getStatus())
+        // 风险等级筛选以最新评分为准（与列表展示、看板统计同口径），不再过滤 cd_patient 的冗余字段
+        if (StringUtils.hasText(query.getRiskLevel())) {
+            List<Long> matchedIds = patientIdsOfRiskLevel(query.getRiskLevel());
+            if (matchedIds.isEmpty()) {
+                return PageResult.of(0L, new ArrayList<>());
+            }
+            wrapper.in(CdPatient::getPatientId, matchedIds);
+        }
+        wrapper.eq(StringUtils.hasText(query.getStatus()), CdPatient::getStatus, query.getStatus())
                .eq(query.getDoctorId() != null, CdPatient::getDoctorId, query.getDoctorId());
 
         // 科室筛选：以责任医生所在科室为准，先把科室展开为医生集合
@@ -95,11 +102,8 @@ public class CdPatientServiceImpl implements CdPatientService {
             wrapper.in(CdPatient::getPatientId, patientIds);
         }
 
-        // 按风险等级倒序（高危优先），再按评分倒序
-        wrapper.orderByDesc(CdPatient::getRiskLevel)
-                .orderByDesc(CdPatient::getRiskScore)
-                .orderByAsc(CdPatient::getPatientId);
-
+           // 排序口径与风险等级一致：以最新评分的等级/分数为准（高危优先、分数高优先、无评分者置后）
+        wrapper.last("ORDER BY (SELECT hs.risk_level FROM cd_health_score hs WHERE hs.patient_id = cd_patient.patient_id ORDER BY hs.calc_time DESC, hs.score_id DESC LIMIT 1) DESC, (SELECT hs.total_score FROM cd_health_score hs WHERE hs.patient_id = cd_patient.patient_id ORDER BY hs.calc_time DESC, hs.score_id DESC LIMIT 1) DESC, patient_id ASC");
         Page<CdPatient> page = patientMapper.selectPage(
                 new Page<>(query.getPageNum(), query.getPageSize()), wrapper);
 
@@ -124,6 +128,10 @@ public class CdPatientServiceImpl implements CdPatientService {
         if (latest != null) {
             vo.setRiskScore(latest.getTotalScore());
             vo.setRiskLevel(latest.getRiskLevel());
+        } else {
+            // 无评分记录时：等级由现有分数换算出（与评分口径一致），避免档案等级与分数相互矛盾
+            int scoreValue = vo.getRiskScore() == null ? 0 : vo.getRiskScore();
+            vo.setRiskLevel(scoreValue >= 80 ? "3" : (scoreValue >= 50 ? "2" : "1"));
         }
 
         // 填充病种编码
@@ -132,6 +140,7 @@ public class CdPatientServiceImpl implements CdPatientService {
         vo.setDiseaseCodes(diseases.stream().map(CdPatientDisease::getDiseaseCode).collect(Collectors.toList()));
         return vo;
     }
+
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -150,10 +159,9 @@ public class CdPatientServiceImpl implements CdPatientService {
         // 科室跟随责任医生，忽略前端传入值
         patient.setDeptId(deptResolver.deptIdOfDoctor(patient.getDoctorId()));
 
-        // 默认值
-        if (!StringUtils.hasText(patient.getRiskLevel())) {
-            patient.setRiskLevel("1");
-        }
+        // 风险等级/评分由评分计算得出，新建时一律按低危初始，不接受前端手工指定
+        patient.setRiskLevel("1");
+        patient.setRiskScore(0);
         if (!StringUtils.hasText(patient.getStatus())) {
             patient.setStatus("0");
         }
@@ -359,6 +367,25 @@ public class CdPatientServiceImpl implements CdPatientService {
         return vos;
     }
 
+    /**
+     * 按风险等级筛选患者：有评分记录的一律以最新评分为准；
+     * 无评分记录的患者退回 cd_patient 原值（与档案页回退口径一致）。
+     */
+    private List<Long> patientIdsOfRiskLevel(String riskLevel) {
+        List<Long> ids = new ArrayList<>();
+        for (CdHealthScore score : healthScoreMapper.selectLatestPerPatient()) {
+            if (riskLevel.equals(score.getRiskLevel())) {
+                ids.add(score.getPatientId());
+            }
+        }
+        for (CdPatient p : patientMapper.selectList(Wrappers.<CdPatient>lambdaQuery()
+                .eq(CdPatient::getRiskLevel, riskLevel))) {
+            if (!ids.contains(p.getPatientId())) {
+                ids.add(p.getPatientId());
+            }
+        }
+        return ids;
+    }
     /** 批量取每个患者最近一次评分（风险等级以此为准） */
     private Map<Long, CdHealthScore> latestScores(List<Long> patientIds) {
         Map<Long, CdHealthScore> result = new HashMap<>();
@@ -410,41 +437,51 @@ public class CdPatientServiceImpl implements CdPatientService {
     public java.util.Map<String, Object> overview() {
         Map<String, Object> result = new LinkedHashMap<>();
 
-        Long patientTotal = patientMapper.selectCount(Wrappers.<CdPatient>lambdaQuery());
-        Long highRisk = patientMapper.selectCount(Wrappers.<CdPatient>lambdaQuery()
-                .eq(CdPatient::getRiskLevel, "3"));
-        Long midRisk = patientMapper.selectCount(Wrappers.<CdPatient>lambdaQuery()
-                .eq(CdPatient::getRiskLevel, "2"));
-        Long lowRisk = patientMapper.selectCount(Wrappers.<CdPatient>lambdaQuery()
-                .eq(CdPatient::getRiskLevel, "1"));
+        // 风险人数统计以最新评分为准（与患者列表、档案页同口径）；无评分记录的患者退回 cd_patient 原值
+        Map<Long, CdHealthScore> latestScoreMap = new HashMap<>();
+        for (CdHealthScore score : healthScoreMapper.selectLatestPerPatient()) {
+            latestScoreMap.put(score.getPatientId(), score);
+        }
+        List<CdPatient> allPatients = patientMapper.selectList(Wrappers.<CdPatient>lambdaQuery());
+        long lowRisk = 0;
+        long midRisk = 0;
+        long highRisk = 0;
+        List<Map<String, Object>> highRiskList = new ArrayList<>();
+        for (CdPatient p : allPatients) {
+            CdHealthScore score = latestScoreMap.get(p.getPatientId());
+            String riskLevel = score != null ? score.getRiskLevel() : p.getRiskLevel();
+            Integer riskScore = score != null ? score.getTotalScore() : p.getRiskScore();
+            if ("3".equals(riskLevel)) {
+                highRisk++;
+                Map<String, Object> m = new LinkedHashMap<>();
+                m.put("patientId", p.getPatientId());
+                m.put("name", p.getName());
+                m.put("gender", p.getGender());
+                m.put("phone", p.getPhone());
+                m.put("riskScore", riskScore);
+                m.put("pendingWarningCount", p.getPendingWarningCount());
+                highRiskList.add(m);
+            } else if ("2".equals(riskLevel)) {
+                midRisk++;
+            } else {
+                lowRisk++;
+            }
+        }
+        highRiskList.sort(Comparator.comparing(m -> -((Integer) Optional.ofNullable(m.get("riskScore")).orElse(0))));
+        List<Map<String, Object>> list = highRiskList.size() > 10 ? new ArrayList<>(highRiskList.subList(0, 10)) : highRiskList;
+
         Long pendingWarning = warningMapper.selectCount(Wrappers.<CdWarning>lambdaQuery()
                 .eq(CdWarning::getHandleStatus, "0"));
         LocalDateTime todayStart = LocalDate.now().atStartOfDay();
         Long todayMeasure = measureMapper.selectCount(Wrappers.<CdMeasure>lambdaQuery()
                 .ge(CdMeasure::getMeasureTime, todayStart));
 
-        result.put("patientTotal", patientTotal);
+        result.put("patientTotal", (long) allPatients.size());
         result.put("highRiskCount", highRisk);
         result.put("midRiskCount", midRisk);
         result.put("lowRiskCount", lowRisk);
         result.put("pendingWarningCount", pendingWarning);
         result.put("todayMeasureCount", todayMeasure);
-
-        List<CdPatient> highRiskList = patientMapper.selectList(Wrappers.<CdPatient>lambdaQuery()
-                .eq(CdPatient::getRiskLevel, "3")
-                .orderByDesc(CdPatient::getRiskScore)
-                .last("limit 10"));
-        List<Map<String, Object>> list = new ArrayList<>();
-        for (CdPatient p : highRiskList) {
-            Map<String, Object> m = new LinkedHashMap<>();
-            m.put("patientId", p.getPatientId());
-            m.put("name", p.getName());
-            m.put("gender", p.getGender());
-            m.put("phone", p.getPhone());
-            m.put("riskScore", p.getRiskScore());
-            m.put("pendingWarningCount", p.getPendingWarningCount());
-            list.add(m);
-        }
         result.put("highRiskPatients", list);
         return result;
     }

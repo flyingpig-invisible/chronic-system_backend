@@ -4,6 +4,7 @@ import com.chronic.common.result.PageResult;
 import com.chronic.modules.chronic.dto.EmergencyLinkDTO;
 import com.chronic.modules.chronic.dto.WarningHandleDTO;
 import com.chronic.modules.chronic.entity.CdEmergencyLink;
+import com.chronic.modules.chronic.entity.CdWarningRule;
 import com.chronic.modules.chronic.entity.CdWarning;
 import com.chronic.modules.chronic.query.WarningQuery;
 
@@ -38,4 +39,7 @@ public interface CdWarningService {
     /** 根据监测数据判定是否触发预警 */
     void checkAndCreateWarning(Long patientId, String patientName, String indicatorCode,
                                java.math.BigDecimal value, String unit, Long measureId);
+
+    /** 按指标编码与数值匹配最严重的启用规则，未命中返回 null */
+    CdWarningRule matchRuleCode(String indicatorCode, java.math.BigDecimal value);
 }

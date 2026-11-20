@@ -24,6 +24,16 @@ public interface CdScoreService extends IService<CdHealthScore> {
     void saveDiseaseWeights(ScoreWeightSaveDTO dto);
 
     /**
+     * 病种综合权重（多病共存时各病种占比），未配置的病种按平分返回
+     */
+    List<Map<String, Object>> diseaseWeightList(List<String> diseaseCodes);
+
+    /**
+     * 覆盖保存病种综合权重，要求权重之和为 1
+     */
+    void saveCombinedDiseaseWeights(List<ScoreWeightSaveDTO.DiseaseItem> items);
+
+    /**
      * 物理删除评分记录
      */
     void deleteScore(Long scoreId);

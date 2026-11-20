@@ -21,4 +21,7 @@ public interface SysRoleService extends IService<SysRole> {
     void setMenuIds(Long roleId, List<Long> menuIds);
 
     List<Long> menuIds(Long roleId);
+
+    /** 确保内置角色（超级管理员 / 医生 / 家属）存在，返回新增条数 */
+    int ensureBuiltInRoles();
 }

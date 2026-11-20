@@ -12,4 +12,5 @@ public class ScoreQuery extends PageQuery {
     private Long patientId;
     private String riskLevel;
     private String triggerType;
+
 }

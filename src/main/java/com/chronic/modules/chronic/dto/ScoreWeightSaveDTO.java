@@ -45,4 +45,21 @@ public class ScoreWeightSaveDTO implements Serializable {
         @Schema(description = "权重(0-1)")
         private BigDecimal weight;
     }
+
+    @Data
+    @Schema(description = "病种综合权重")
+    public static class DiseaseItem implements Serializable {
+
+        private static final long serialVersionUID = 1L;
+
+        @Schema(description = "病种编码")
+        @NotBlank(message = "病种编码不能为空")
+        private String diseaseCode;
+
+        @Schema(description = "病种名称")
+        private String diseaseName;
+
+        @Schema(description = "该病种在综合评分中的占比(0-1)")
+        private BigDecimal weight;
+    }
 }
