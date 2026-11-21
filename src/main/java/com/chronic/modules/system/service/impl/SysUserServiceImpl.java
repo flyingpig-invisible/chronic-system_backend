@@ -10,17 +10,24 @@ import com.chronic.modules.system.mapper.SysUserMapper;
 import com.chronic.modules.system.query.UserQuery;
 import com.chronic.modules.system.service.SysUserService;
 import com.chronic.modules.system.service.DeptResolver;
+import com.chronic.security.LoginUser;
+import com.chronic.security.SecurityUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.regex.Pattern;
 
 @Service
 public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> implements SysUserService {
+
+    private static final Pattern USERNAME_PATTERN = Pattern.compile("^[A-Za-z0-9][A-Za-z0-9_]{3,19}$");
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -81,13 +88,43 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void updateUser(SysUser user) {
+        if (user == null || user.getUserId() == null) {
+            throw new ServiceException("请选择要修改的用户");
+        }
+        SysUser target = getById(user.getUserId());
+        if (target == null) {
+            throw new ServiceException("用户不存在");
+        }
         // 不允许通过通用修改接口改密码
         user.setPassword(null);
+        String newUsername = user.getUsername() == null ? "" : user.getUsername().trim();
         user.setUsername(null);
+        if (StringUtils.hasText(newUsername) && !newUsername.equals(target.getUsername())) {
+            // 用户名即登录账号：只允许本人修改自己的，避免越权改掉他人的登录入口
+            LoginUser current = SecurityUtils.getLoginUserOrNull();
+            if (current == null || !Objects.equals(current.getUserId(), target.getUserId())) {
+                throw new ServiceException(403, "只能修改自己的用户名");
+            }
+            user.setUsername(validateUsername(newUsername, target.getUserId()));
+        }
         updateById(user);
     }
 
+    /** 用户名规则与小程序端一致：字母/数字开头，仅字母数字下划线，4~20 位 */
+    private String validateUsername(String username, Long selfId) {
+        if (!USERNAME_PATTERN.matcher(username).matches()) {
+            throw new ServiceException("用户名需为 4~20 位，以字母或数字开头，仅可包含字母、数字和下划线");
+        }
+        Long exists = count(new LambdaQueryWrapper<SysUser>()
+                .eq(SysUser::getUsername, username)
+                .ne(SysUser::getUserId, selfId));
+        if (exists != null && exists > 0) {
+            throw new ServiceException("用户名已存在");
+        }
+        return username;
+    }
     @Override
     public void removeUser(Long userId) {
         if (userId != null && userId == 1L) {
@@ -95,7 +132,6 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         }
         removeById(userId);
     }
-
     @Override
     public void resetPassword(Long userId, String password) {
         SysUser user = getById(userId);

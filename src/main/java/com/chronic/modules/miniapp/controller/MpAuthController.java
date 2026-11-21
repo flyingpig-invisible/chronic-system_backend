@@ -65,6 +65,11 @@ public class MpAuthController {
         return Result.success(authService.updateProfile(realName, avatar, gender));
     }
 
+    @Operation(summary = "修改用户名（登录账号）")
+    @PutMapping("/username")
+    public Result<MpUserVO> updateUsername(@RequestBody java.util.Map<String, String> body) {
+        return Result.success("用户名已更新", authService.updateUsername(body == null ? null : body.get("username")));
+    }
     @Operation(summary = "退出登录")
     @PostMapping("/logout")
     public Result<Void> logout() {

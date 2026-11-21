@@ -22,4 +22,6 @@ public interface MpAuthService {
     MpUserVO currentUser();
 
     MpUserVO updateProfile(String realName, String avatar, String gender);
+
+    MpUserVO updateUsername(String username);
 }

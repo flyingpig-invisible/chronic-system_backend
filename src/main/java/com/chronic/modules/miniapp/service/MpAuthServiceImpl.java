@@ -19,11 +19,14 @@ import com.chronic.security.LoginUser;
 import com.chronic.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.util.regex.Pattern;
 
 /**
  * 小程序认证服务实现
@@ -37,6 +40,12 @@ import java.time.LocalDateTime;
 @Service
 @RequiredArgsConstructor
 public class MpAuthServiceImpl implements MpAuthService {
+
+    /** 用户名：字母或数字开头，仅允许字母、数字、下划线 */
+    private static final Pattern USERNAME_PATTERN = Pattern.compile("^[A-Za-z0-9][A-Za-z0-9_]{3,19}$");
+
+    /** 纯手机号：用户名不允许与手机号同形，避免与手机号登录混淆 */
+    private static final Pattern PHONE_PATTERN = Pattern.compile("^1\\d{10}$");
 
     private final MpUserMapper userMapper;
     private final MpPatientMapper patientMapper;
@@ -143,6 +152,44 @@ public class MpAuthServiceImpl implements MpAuthService {
         return toVO(user);
     }
 
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public MpUserVO updateUsername(String username) {
+        MpUser user = currentMpUser();
+        if (!StringUtils.hasText(username)) {
+            throw new ServiceException("用户名不能为空");
+        }
+        String value = username.trim();
+        if (value.length() < 4 || value.length() > 20) {
+            throw new ServiceException("用户名长度需为 4~20 个字符");
+        }
+        if (!USERNAME_PATTERN.matcher(value).matches()) {
+            throw new ServiceException("用户名只能包含字母、数字和下划线，且需以字母或数字开头");
+        }
+        if (PHONE_PATTERN.matcher(value).matches()) {
+            throw new ServiceException("用户名不能是纯手机号");
+        }
+        if (value.equalsIgnoreCase(user.getUsername())) {
+            return toVO(user);
+        }
+        // 用户名与手机号都能登录，因此两者之间也不能撞号
+        Long exists = userMapper.selectCount(Wrappers.<MpUser>lambdaQuery()
+                .ne(MpUser::getUserId, user.getUserId())
+                .and(w -> w.eq(MpUser::getUsername, value).or().eq(MpUser::getPhone, value)));
+        if (exists != null && exists > 0) {
+            throw new ServiceException("用户名已被占用，请更换");
+        }
+        user.setUsername(value);
+        user.setUpdateTime(LocalDateTime.now());
+        try {
+            userMapper.updateById(user);
+        } catch (DuplicateKeyException e) {
+            // 并发修改时由唯一索引兜底
+            throw new ServiceException("用户名已被占用，请更换");
+        }
+        log.info("小程序用户 {} 修改用户名 {} -> {}", user.getUserId(), user.getPhone(), value);
+        return toVO(user);
+    }
     private MpUser currentMpUser() {
         LoginUser loginUser = SecurityUtils.getLoginUser();
         if (!"mp".equals(loginUser.getUserType())) {
