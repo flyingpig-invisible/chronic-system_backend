@@ -5,7 +5,7 @@ import com.chronic.modules.miniapp.entity.MpBindApply;
 import org.apache.ibatis.annotations.Mapper;
 
 /**
- * MpBindApply Mapper
+ * 家属绑定申请 Mapper
  *
  * @author chronic
  */

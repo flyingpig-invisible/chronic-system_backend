@@ -1,8 +1,8 @@
-package com.chronic.modules.miniapp.controller;
+package com.chronic.modules.chronic.controller;
 
 import com.chronic.common.result.PageResult;
 import com.chronic.common.result.Result;
-import com.chronic.modules.miniapp.dto.BindAuditDTO;
+import com.chronic.modules.chronic.dto.BindAuditDTO;
 import com.chronic.modules.miniapp.entity.MpBindApply;
 import com.chronic.modules.miniapp.service.MpBindService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.*;
  * @author chronic
  */
 @Tag(name = "22-绑定审核", description = "医生审核家属-患者绑定申请")
-@RestController
+@RestController("bindAuditController")
 @RequestMapping("/chronic/bind")
 @RequiredArgsConstructor
 public class BindAuditController {

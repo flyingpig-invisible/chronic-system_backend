@@ -25,7 +25,7 @@ import com.chronic.modules.chronic.support.huawei.HuaweiExportParser;
 import com.chronic.modules.chronic.support.huawei.ImportIssue;
 import com.chronic.modules.chronic.support.huawei.ParseResult;
 import com.chronic.modules.chronic.vo.ImportResultVO;
-import com.chronic.modules.miniapp.service.MpDataService;
+import com.chronic.modules.miniapp.service.MpAccessService;
 import com.chronic.security.LoginUser;
 import com.chronic.security.SecurityUtils;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -70,7 +70,7 @@ public class HealthImportServiceImpl implements HealthImportService {
     private final CdImportLogMapper importLogMapper;
     private final CdWarningService warningService;
     private final CdScoreService scoreService;
-    private final MpDataService dataService;
+    private final MpAccessService mpAccessService;
 
     @Override
     public ImportResultVO importData(MultipartFile file, DeviceImportParam param) {
@@ -338,7 +338,7 @@ public class HealthImportServiceImpl implements HealthImportService {
     private void checkMpPermission(Long patientId) {
         LoginUser user = SecurityUtils.getLoginUserOrNull();
         if (user != null && "mp".equals(user.getUserType())) {
-            dataService.checkPermission(patientId);
+            mpAccessService.requirePatient(patientId);
         }
     }
 }

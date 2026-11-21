@@ -14,7 +14,7 @@ import com.chronic.modules.chronic.mapper.CdMeasureMapper;
 import com.chronic.modules.chronic.mapper.CdPatientMapper;
 import com.chronic.modules.chronic.service.CdDeviceService;
 import com.chronic.modules.chronic.vo.DeviceCardVO;
-import com.chronic.modules.miniapp.service.MpDataService;
+import com.chronic.modules.miniapp.service.MpAccessService;
 import com.chronic.security.LoginUser;
 import com.chronic.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
@@ -53,7 +53,7 @@ public class CdDeviceServiceImpl implements CdDeviceService {
     private final CdDeviceMapper deviceMapper;
     private final CdMeasureMapper measureMapper;
     private final CdPatientMapper patientMapper;
-    private final MpDataService dataService;
+    private final MpAccessService mpAccessService;
 
     @Override
     public List<DeviceCardVO> scan(Long patientId) {
@@ -218,7 +218,7 @@ public class CdDeviceServiceImpl implements CdDeviceService {
         }
         LoginUser user = SecurityUtils.getLoginUserOrNull();
         if (user != null && "mp".equals(user.getUserType())) {
-            dataService.checkPermission(patientId);
+            mpAccessService.requirePatient(patientId);
         }
     }
 

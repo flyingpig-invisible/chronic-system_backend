@@ -5,7 +5,7 @@ import com.chronic.modules.miniapp.entity.MpFamilyPatient;
 import org.apache.ibatis.annotations.Mapper;
 
 /**
- * MpFamilyPatient Mapper
+ * 家属-患者关联 Mapper
  *
  * @author chronic
  */

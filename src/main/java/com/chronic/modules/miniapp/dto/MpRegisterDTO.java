@@ -1,27 +1,36 @@
 package com.chronic.modules.miniapp.dto;
 
-import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+
+import java.io.Serializable;
+
+/**
+ * 小程序注册参数（仅开放患者/家属注册，医生由管理端创建）
+ *
+ * @author chronic
+ */
 @Data
-@Schema(description = "小程序注册（家属）")
-public class MpRegisterDTO {
+public class MpRegisterDTO implements Serializable {
 
-    @Schema(description = "用户名")
-    @NotBlank(message = "用户名不能为空")
-    private String username;
+    private static final long serialVersionUID = 1L;
 
-    @Schema(description = "密码")
-    @NotBlank(message = "密码不能为空")
-    private String password;
-
-    @Schema(description = "真实姓名")
-    private String realName;
-
-    @Schema(description = "手机号")
+    @NotBlank(message = "请输入手机号")
+    @Pattern(regexp = "^1\\d{10}$", message = "手机号格式不正确")
     private String phone;
 
-    @Schema(description = "角色：1患者 2家属；新用户注册默认家属")
+    @NotBlank(message = "请输入密码")
+    private String password;
+
+    private String realName;
+
+    /** 1患者 2家属 */
     private String userRole;
+
+    private String gender;
+
+    /** 患者端自带患者编号时可填写，用于关联医生端已有档案 */
+    private String patientNo;
 }

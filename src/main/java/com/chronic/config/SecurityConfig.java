@@ -44,6 +44,7 @@ public class SecurityConfig {
             "/auth/captcha",
             "/mp/auth/login",
             "/mp/auth/register",
+            "/mp/auth/reset-password",
             "/doc.html",
             "/webjars/**",
             "/v3/api-docs/**",
@@ -69,6 +70,8 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> {
                 auth.requestMatchers(WHITE_LIST).permitAll();
+                // 小程序端接口统一 /mp/** 前缀，除登录注册外均需登录
+                auth.requestMatchers(org.springframework.security.web.util.matcher.AntPathRequestMatcher.antMatcher("/mp/**")).authenticated();
                 auth.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .anyRequest().authenticated();
             })

@@ -49,6 +49,9 @@ public class CdPatient implements Serializable {
     private Long doctorId;
 
     private Long deptId;
+    @Schema(description = "负责医师姓名，物理列不存在，按责任医生实时填充" )
+    @TableField(exist = false)
+    private String physicianName;
 
     @Schema(description = "风险等级：1低危 2中危 3高危")
     private String riskLevel;

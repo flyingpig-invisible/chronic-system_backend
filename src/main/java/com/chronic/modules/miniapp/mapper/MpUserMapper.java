@@ -5,7 +5,7 @@ import com.chronic.modules.miniapp.entity.MpUser;
 import org.apache.ibatis.annotations.Mapper;
 
 /**
- * MpUser Mapper
+ * 小程序用户 Mapper
  *
  * @author chronic
  */
