@@ -38,6 +38,9 @@ public class CdClinic implements Serializable {
 
     private String chiefComplaint;
 
+    @Schema(description = "主诉附图，逗号分隔的相对路径")
+    private String imageUrls;
+
     private LocalDateTime reserveTime;
 
     private String diagnosis;
@@ -45,6 +48,9 @@ public class CdClinic implements Serializable {
     private String advice;
 
     private String prescription;
+
+    @Schema(description = "医生诊断附图，逗号分隔的相对路径")
+    private String adviceImages;
 
     private LocalDateTime applyTime;
 

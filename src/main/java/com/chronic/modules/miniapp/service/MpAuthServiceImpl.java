@@ -104,20 +104,7 @@ public class MpAuthServiceImpl implements MpAuthService {
         user.setCreateTime(LocalDateTime.now());
         userMapper.insert(user);
 
-        // 患者注册：医生端已建档案且未关联小程序用户时，按手机号/患者编号自动对齐
-        if ("1".equals(role)) {
-            CdPatient patient = null;
-            if (StringUtils.hasText(dto.getPatientNo())) {
-                patient = patientMapper.selectByPatientNo(dto.getPatientNo().trim());
-            }
-            if (patient == null) {
-                patient = patientMapper.selectUnlinkedByPhone(phone);
-            }
-            if (patient != null && (patient.getMpUserId() == null || patient.getMpUserId() == 0L)) {
-                patient.setMpUserId(user.getUserId());
-                patientMapper.linkUser(patient.getPatientId(), user.getUserId());
-            }
-        }
+        // 患者注册后不再按手机号自动认领医生端档案，统一由医生端审核建档申请（mp_patient_apply）
         return buildLogin(user);
     }
 

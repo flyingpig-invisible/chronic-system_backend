@@ -17,4 +17,7 @@ public class ClinicFinishDTO {
 
     @Schema(description = "处方")
     private String prescription;
+
+    @Schema(description = "诊断附图，逗号分隔的 /upload/ 相对路径，最多 9 张")
+    private String adviceImages;
 }

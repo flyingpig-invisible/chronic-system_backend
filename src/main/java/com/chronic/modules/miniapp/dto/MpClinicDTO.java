@@ -23,4 +23,7 @@ public class MpClinicDTO implements Serializable {
 
     @NotBlank(message = "请填写病情描述")
     private String chiefComplaint;
+
+    /** 主诉附图，逗号分隔的 /upload/xxx 相对路径，最多 6 张 */
+    private String imageUrls;
 }

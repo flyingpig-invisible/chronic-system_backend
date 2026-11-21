@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -137,9 +138,22 @@ public class MpContentServiceImpl implements MpContentService {
         clinic.setVisitType(StringUtils.hasText(dto.getVisitType()) ? dto.getVisitType() : "1");
         clinic.setVisitStatus("0");
         clinic.setChiefComplaint(dto.getChiefComplaint());
+        clinic.setImageUrls(limitImages(dto.getImageUrls()));
         clinic.setApplyTime(LocalDateTime.now());
         clinicMapper.insert(clinic);
         return clinic.getVisitId();
+    }
+
+    /** 主诉附图最多保留 6 张，且只接受本系统上传的相对路径 */
+    private String limitImages(String imageUrls) {
+        if (!StringUtils.hasText(imageUrls)) {
+            return null;
+        }
+        return Arrays.stream(imageUrls.split(","))
+                .map(String::trim)
+                .filter(u -> u.startsWith("/upload/"))
+                .limit(6)
+                .collect(Collectors.joining(","));
     }
 
     @Override

@@ -20,5 +20,8 @@ public interface CdRemindService extends IService<CdRemind> {
 
     List<CdRemindLog> todayLog(Long patientId);
 
+    /** 某条用药提醒的打卡记录，days 为回看天数（null 表示全部） */
+    List<CdRemindLog> logOfRemind(Long remindId, Integer days);
+
     void check(Long remindId, String checkStatus);
 }

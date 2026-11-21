@@ -240,8 +240,9 @@ public class MpPatientServiceImpl implements MpPatientService {
             }
             MpTrendVO vo = new MpTrendVO();
             vo.setIndicatorCode(code);
-            vo.setIndicatorName(list.get(0).getIndicatorName());
-            vo.setUnit(list.get(0).getUnit());
+            // 名称/单位统一走字典回退：部分录入通道会写成空串，直接取首条会导致前端胶囊空白
+            vo.setIndicatorName(INDICATOR_NAME.getOrDefault(code, nameOf(list.get(0))));
+            vo.setUnit(INDICATOR_UNIT.getOrDefault(code, unitOf(list.get(0))));
             List<MpPointVO> points = new ArrayList<>();
             BigDecimal sum = BigDecimal.ZERO;
             BigDecimal max = null;

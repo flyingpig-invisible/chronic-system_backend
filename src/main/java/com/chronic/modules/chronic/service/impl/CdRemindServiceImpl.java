@@ -19,7 +19,9 @@ import org.springframework.util.StringUtils;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class CdRemindServiceImpl extends ServiceImpl<CdRemindMapper, CdRemind> implements CdRemindService {
@@ -121,6 +123,62 @@ public class CdRemindServiceImpl extends ServiceImpl<CdRemindMapper, CdRemind> i
                     log.setPlanDate(today);
                     log.setPlanTime(planTime);
                     log.setCheckStatus("0");
+                }
+                result.add(log);
+            }
+        }
+        return result;
+    }
+
+    @Override
+    public List<CdRemindLog> logOfRemind(Long remindId, Integer days) {
+        CdRemind remind = getById(remindId);
+        if (remind == null) {
+            throw new ServiceException("提醒不存在");
+        }
+        LocalDate today = LocalDate.now();
+        LocalDate from = days != null && days > 0 ? today.minusDays(days - 1L) : null;
+        if (remind.getBeginDate() != null && (from == null || from.isBefore(remind.getBeginDate()))) {
+            from = remind.getBeginDate();
+        }
+        LocalDate to = remind.getEndDate() != null && remind.getEndDate().isBefore(today) ? remind.getEndDate() : today;
+
+        String times = StringUtils.hasText(remind.getRemindTimes()) ? remind.getRemindTimes() : "08:00";
+        List<String> planTimes = new ArrayList<>();
+        for (String s : times.split(",")) {
+            String time = s.trim();
+            if (!time.isEmpty()) {
+                planTimes.add(time);
+            }
+        }
+        if (planTimes.isEmpty()) {
+            planTimes.add("08:00");
+        }
+
+        Map<String, CdRemindLog> exist = new HashMap<>();
+        LambdaQueryWrapper<CdRemindLog> w = new LambdaQueryWrapper<CdRemindLog>()
+                .eq(CdRemindLog::getRemindId, remindId)
+                .ge(from != null, CdRemindLog::getPlanDate, from)
+                .le(CdRemindLog::getPlanDate, to);
+        for (CdRemindLog log : remindLogMapper.selectList(w)) {
+            exist.put(log.getPlanDate() + "|" + log.getPlanTime(), log);
+        }
+
+        // 按用药周期与提醒时间点补全：库里没有记录的计划，历史日期记为漏服，当天记为未打卡
+        List<CdRemindLog> result = new ArrayList<>();
+        if (from == null || to.isBefore(from)) {
+            return result;
+        }
+        for (LocalDate d = to; !d.isBefore(from); d = d.minusDays(1)) {
+            for (String planTime : planTimes) {
+                CdRemindLog log = exist.get(d + "|" + planTime);
+                if (log == null) {
+                    log = new CdRemindLog();
+                    log.setRemindId(remindId);
+                    log.setPatientId(remind.getPatientId());
+                    log.setPlanDate(d);
+                    log.setPlanTime(planTime);
+                    log.setCheckStatus(d.isBefore(today) ? "2" : "0");
                 }
                 result.add(log);
             }

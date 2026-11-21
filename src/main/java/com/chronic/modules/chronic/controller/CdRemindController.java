@@ -74,6 +74,14 @@ public class CdRemindController {
         return Result.success(remindService.todayLog(patientId));
     }
 
+    @Operation(summary = "用药提醒的打卡记录")
+    @PreAuthorize("@ss.hasPermi('chronic:remind:list')")
+    @GetMapping("/{remindId}/logs")
+    public Result<List<CdRemindLog>> logs(@PathVariable Long remindId,
+                                       @RequestParam(required = false) Integer days) {
+        return Result.success(remindService.logOfRemind(remindId, days));
+    }
+
     @Operation(summary = "服药打卡")
     @PreAuthorize("@ss.hasPermi('chronic:remind:edit')")
     @PutMapping("/{remindId}/check")

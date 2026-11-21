@@ -40,13 +40,6 @@ public class CdClinicController {
         return Result.success(clinicService.getById(visitId));
     }
 
-    @Operation(summary = "预约就诊")
-    @PreAuthorize("@ss.hasPermi('chronic:clinic:handle')")
-    @PostMapping
-    public Result<Void> book(@RequestBody CdClinic clinic) {
-        clinicService.book(clinic);
-        return Result.success();
-    }
 
     @Operation(summary = "医生接诊")
     @PreAuthorize("@ss.hasPermi('chronic:clinic:handle')")

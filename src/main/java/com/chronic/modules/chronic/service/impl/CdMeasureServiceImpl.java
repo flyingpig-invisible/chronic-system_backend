@@ -92,6 +92,18 @@ public class CdMeasureServiceImpl implements CdMeasureService {
         if (!StringUtils.hasText(measure.getAbnormalFlag())) {
             measure.setAbnormalFlag("0");
         }
+        // 名称/单位按指标字典补齐：医生端手动录入不传名称，留空会让各端展示出现空白
+        for (String[] meta : ALL_INDICATORS) {
+            if (meta[0].equals(measure.getIndicatorCode())) {
+                if (!StringUtils.hasText(measure.getIndicatorName())) {
+                    measure.setIndicatorName(meta[1]);
+                }
+                if (!StringUtils.hasText(measure.getUnit())) {
+                    measure.setUnit(meta[2]);
+                }
+                break;
+            }
+        }
 
         measureMapper.insert(measure);
 

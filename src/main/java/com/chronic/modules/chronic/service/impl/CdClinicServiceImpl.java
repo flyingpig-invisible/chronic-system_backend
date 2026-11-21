@@ -68,6 +68,7 @@ public class CdClinicServiceImpl extends ServiceImpl<CdClinicMapper, CdClinic> i
         clinic.setDiagnosis(dto.getDiagnosis());
         clinic.setAdvice(dto.getAdvice());
         clinic.setPrescription(dto.getPrescription());
+        clinic.setAdviceImages(limitImages(dto.getAdviceImages()));
         clinic.setVisitStatus("2");
         clinic.setFinishTime(LocalDateTime.now());
         if (clinic.getDoctorId() == null) {
@@ -75,6 +76,19 @@ public class CdClinicServiceImpl extends ServiceImpl<CdClinicMapper, CdClinic> i
             clinic.setDoctorName(SecurityUtils.getLoginUser().getRealName());
         }
         updateById(clinic);
+    }
+
+    /** 诊断附图最多 9 张，且只接受本系统上传的相对路径 */
+    private String limitImages(String images) {
+        if (!StringUtils.hasText(images)) {
+            return null;
+        }
+        String joined = java.util.Arrays.stream(images.split(","))
+                .map(String::trim)
+                .filter(u -> u.startsWith("/upload/"))
+                .limit(9)
+                .collect(java.util.stream.Collectors.joining(","));
+        return joined.isEmpty() ? null : joined;
     }
 
     @Override
