@@ -176,6 +176,57 @@ public class CdDeviceServiceImpl implements CdDeviceService {
                 .last("limit " + size));
     }
 
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void initDefaultDevices(Long patientId, String patientName, Long bindUserId) {
+        if (patientId == null) {
+            return;
+        }
+        String owner = StringUtils.hasText(patientName) ? patientName : "患者";
+        CdDevice watch = new CdDevice();
+        watch.setDeviceNo(String.format("SIM-WATCH-%06d", patientId));
+        watch.setDeviceName(owner + "的智能手表");
+        watch.setAlias("智能手表");
+        watch.setDeviceType("1");
+        watch.setVendor("HUAWEI");
+        watch.setModel("HUAWEI Watch GT 5");
+        watch.setModelName("华为手表 GT 5");
+        watch.setBattery(86);
+        insertIfAbsent(patientId, "1", watch, bindUserId);
+
+        CdDevice monitor = new CdDevice();
+        monitor.setDeviceNo(String.format("SIM-BP-%06d", patientId));
+        monitor.setDeviceName(owner + "的血压计");
+        monitor.setAlias("血压计");
+        monitor.setDeviceType("2");
+        monitor.setVendor("欧姆龙");
+        monitor.setModel("OMRON HEM-7361T");
+        monitor.setModelName("欧姆龙血压计 HEM-7361T");
+        monitor.setBattery(72);
+        insertIfAbsent(patientId, "2", monitor, bindUserId);
+    }
+
+    /** 患者已存在可用同类型设备则跳过，否则写入默认设备档案 */
+    private void insertIfAbsent(Long patientId, String deviceType, CdDevice device, Long bindUserId) {
+        Long exists = deviceMapper.selectCount(new LambdaQueryWrapper<CdDevice>()
+                .eq(CdDevice::getPatientId, patientId)
+                .eq(CdDevice::getDeviceType, deviceType)
+                .eq(CdDevice::getStatus, "0"));
+        if (exists != null && exists > 0) {
+            return;
+        }
+        device.setPatientId(patientId);
+        device.setBindUserId(bindUserId);
+        device.setBindTime(LocalDateTime.now());
+        device.setBindSource("3");
+        device.setOnlineStatus("1");
+        device.setLastOnline(LocalDateTime.now());
+        device.setLastSyncTime(LocalDateTime.now());
+        device.setStatus("0");
+        deviceMapper.insert(device);
+        log.info("默认设备已绑定：patientId={} deviceType={} deviceNo={}", patientId, deviceType, device.getDeviceNo());
+    }
+
     // ------------------------------------------------------------------ 内部方法
 
     /** 按蓝牙名查找设备，不存在则解析型号后建档 */

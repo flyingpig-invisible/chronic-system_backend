@@ -32,6 +32,9 @@ public interface CdDeviceService {
     /** 医生端分页 */
     PageResult<DeviceCardVO> page(Integer pageNum, Integer pageSize, String keyword, Long patientId);
 
+    /** 自动绑定默认设备：智能手表 + 血压计（按患者补齐，已存在同类型则跳过） */
+    void initDefaultDevices(Long patientId, String patientName, Long bindUserId);
+
     /** 某台设备上传的监测数据 */
     List<CdMeasure> deviceMeasures(Long deviceId, Integer limit);
 }

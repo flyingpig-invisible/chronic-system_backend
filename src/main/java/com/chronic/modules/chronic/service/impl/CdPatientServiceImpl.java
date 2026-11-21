@@ -8,6 +8,7 @@ import com.chronic.common.result.PageResult;
 import com.chronic.modules.chronic.entity.*;
 import com.chronic.modules.chronic.mapper.*;
 import com.chronic.modules.chronic.query.PatientQuery;
+import com.chronic.modules.chronic.service.CdDeviceService;
 import com.chronic.modules.chronic.service.CdPatientDeptService;
 import com.chronic.modules.chronic.service.CdPatientService;
 import com.chronic.modules.chronic.service.PatientDataScopeService;
@@ -50,6 +51,7 @@ public class CdPatientServiceImpl implements CdPatientService {
     private final SysUserMapper userMapper;
     private final DeptResolver deptResolver;
     private final CdPatientDeptService patientDeptService;
+    private final CdDeviceService deviceService;
     private final PatientDataScopeService dataScopeService;
 
 
@@ -199,6 +201,14 @@ public class CdPatientServiceImpl implements CdPatientService {
         if (!deptIds.isEmpty()) {
             patientDeptService.fillIfEmpty(patient.getPatientId(), deptIds, "2");
         }
+
+        // 新患者统一绑定默认设备：智能手表 + 血压计（两处建档入口都会走到这里）
+        Long operatorId = patient.getMpUserId();
+        if (operatorId == null) {
+            LoginUser loginUser = SecurityUtils.getLoginUserOrNull();
+            operatorId = loginUser == null ? null : loginUser.getUserId();
+        }
+        deviceService.initDefaultDevices(patient.getPatientId(), patient.getName(), operatorId);
 
         savePatientDisease(patient.getPatientId(), patient.getDiseaseCodes());
         return patient.getPatientId();
