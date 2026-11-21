@@ -6,6 +6,7 @@ import com.chronic.common.exception.ServiceException;
 import com.chronic.common.result.PageResult;
 import com.chronic.modules.chronic.entity.CdPatient;
 import com.chronic.modules.chronic.service.CdPatientService;
+import com.chronic.modules.chronic.service.CdPatientDeptService;
 import com.chronic.modules.miniapp.dto.MpPatientApplyDTO;
 import com.chronic.modules.miniapp.entity.MpPatientApply;
 import com.chronic.modules.miniapp.entity.MpUser;
@@ -55,6 +56,7 @@ public class MpPatientApplyServiceImpl implements MpPatientApplyService {
 
     private final MpPatientApplyMapper applyMapper;
     private final MpPatientMapper patientMapper;
+    private final CdPatientDeptService patientDeptService;
     private final MpAccessService accessService;
     private final CdPatientService patientService;
 
@@ -74,7 +76,16 @@ public class MpPatientApplyServiceImpl implements MpPatientApplyService {
         if (pending != null && pending > 0) {
             throw new ServiceException("已提交过申请，请等待医生审核");
         }
-        MpPatientApply apply = new MpPatientApply();
+        // 注册时可能已建过“仅记录科室”的草稿（状态3），直接复用它，避免重复记录
+        MpPatientApply apply = applyMapper.selectOne(Wrappers.<MpPatientApply>lambdaQuery()
+                .eq(MpPatientApply::getMpUserId, user.getUserId())
+                .eq(MpPatientApply::getApplyStatus, "3")
+                .orderByDesc(MpPatientApply::getApplyId)
+                .last("limit 1"));
+        if (apply == null) {
+            apply = new MpPatientApply();
+        }
+        String registeredDepts = apply.getDeptIds();
         apply.setMpUserId(user.getUserId());
         apply.setUserName(dto.getRealName().trim());
         apply.setUserPhone(user.getPhone());
@@ -84,10 +95,72 @@ public class MpPatientApplyServiceImpl implements MpPatientApplyService {
         apply.setAddress(dto.getAddress());
         apply.setDiseaseCodes(normalizeDiseases(dto.getDiseaseCodes()));
         apply.setApplyRemark(dto.getApplyRemark());
+        // 本次没选科室就沿用注册时选好的
+        String submitCodes = joinDeptIds(dto.getDeptIds());
+        apply.setDeptIds(StringUtils.hasText(submitCodes) ? submitCodes : registeredDepts);
         apply.setApplyStatus("0");
         apply.setApplyTime(LocalDateTime.now());
-        applyMapper.insert(apply);
+        if (apply.getApplyId() == null) {
+            applyMapper.insert(apply);
+        } else {
+            applyMapper.updateById(apply);
+        }
         return apply.getApplyId();
+    }
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void saveRegisterDepts(MpUser user, List<Long> deptIds) {
+        if (user == null || user.getUserId() == null || deptIds == null || deptIds.isEmpty()) {
+            return;
+        }
+        String codes = joinDeptIds(deptIds);
+        if (!StringUtils.hasText(codes)) {
+            return;
+        }
+        // 注册时通常还没有申请：先建草稿，后续提交建档申请时会复用这一条
+        MpPatientApply apply = applyMapper.selectOne(Wrappers.<MpPatientApply>lambdaQuery()
+                .eq(MpPatientApply::getMpUserId, user.getUserId())
+                .orderByDesc(MpPatientApply::getApplyId)
+                .last("limit 1"));
+        if (apply == null) {
+            apply = new MpPatientApply();
+            apply.setMpUserId(user.getUserId());
+            apply.setUserName(user.getRealName());
+            apply.setUserPhone(user.getPhone());
+            apply.setUserGender(StringUtils.hasText(user.getGender()) ? user.getGender() : "2");
+            apply.setDeptIds(codes);
+            // 状态3=仅记录注册科室，不算正式申请，用户仍可正常提交建档申请
+            apply.setApplyStatus("3");
+            apply.setApplyRemark("注册时选择科室");
+            apply.setApplyTime(LocalDateTime.now());
+            applyMapper.insert(apply);
+            return;
+        }
+        apply.setDeptIds(codes);
+        applyMapper.updateById(apply);
+    }
+    /** 科室ID集合转逗号分隔字符串（去重、去空） */
+    private String joinDeptIds(List<Long> deptIds) {
+        if (deptIds == null || deptIds.isEmpty()) {
+            return "";
+        }
+        return deptIds.stream().filter(Objects::nonNull).distinct().map(String::valueOf).collect(Collectors.joining(","));
+    }
+
+    /** 逗号分隔的科室ID转集合，非法值忽略 */
+    private List<Long> parseDeptIds(String deptIds) {
+        if (!StringUtils.hasText(deptIds)) {
+            return new ArrayList<>();
+        }
+        List<Long> ids = new ArrayList<>();
+        for (String part : deptIds.split(",")) {
+            try {
+                ids.add(Long.valueOf(part.trim()));
+            } catch (NumberFormatException ignored) {
+                // 脏数据直接跳过
+            }
+        }
+        return ids;
     }
 
     /** 允许 1,2 或 1,,2 之类的写法，统一成逗号分隔且仅保留已知病种 */
@@ -105,8 +178,10 @@ public class MpPatientApplyServiceImpl implements MpPatientApplyService {
     @Override
     public MpPatientApply myLatest() {
         MpUser user = accessService.currentUser();
+        // 状态3 只是注册时记录科室的草稿，不算正式表单，患者端不展示
         MpPatientApply apply = applyMapper.selectOne(Wrappers.<MpPatientApply>lambdaQuery()
                 .eq(MpPatientApply::getMpUserId, user.getUserId())
+                .ne(MpPatientApply::getApplyStatus, "3")
                 .orderByDesc(MpPatientApply::getApplyId)
                 .last("limit 1"));
         return apply == null ? null : decorate(apply);
@@ -117,6 +192,7 @@ public class MpPatientApplyServiceImpl implements MpPatientApplyService {
         Page<MpPatientApply> page = applyMapper.selectPage(new Page<>(pageNum, pageSize),
                 Wrappers.<MpPatientApply>lambdaQuery()
                         .eq(StringUtils.hasText(applyStatus), MpPatientApply::getApplyStatus, applyStatus)
+                        .ne(!StringUtils.hasText(applyStatus), MpPatientApply::getApplyStatus, "3")
                         .orderByDesc(MpPatientApply::getApplyId));
         page.getRecords().forEach(this::decorate);
         return PageResult.of(page.getTotal(), page.getRecords());
@@ -179,6 +255,11 @@ public class MpPatientApplyServiceImpl implements MpPatientApplyService {
             patient.setCreateBy(apply.getUserName());
             patientId = patientService.addPatient(patient);
             patientMapper.linkUser(patientId, apply.getMpUserId());
+        }
+        // 可见科室：申请里的科室已落库（注册时选择 + 提交时填写），已有科室时只补缺，不覆盖医生端的设置
+        List<Long> deptIds = parseDeptIds(apply.getDeptIds());
+        if (!deptIds.isEmpty()) {
+            patientDeptService.fillIfEmpty(patientId, deptIds, "1");
         }
 
         apply.setApplyStatus("1");

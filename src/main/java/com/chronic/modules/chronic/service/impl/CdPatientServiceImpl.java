@@ -8,12 +8,16 @@ import com.chronic.common.result.PageResult;
 import com.chronic.modules.chronic.entity.*;
 import com.chronic.modules.chronic.mapper.*;
 import com.chronic.modules.chronic.query.PatientQuery;
+import com.chronic.modules.chronic.service.CdPatientDeptService;
 import com.chronic.modules.chronic.service.CdPatientService;
+import com.chronic.modules.chronic.service.PatientDataScopeService;
 import com.chronic.modules.chronic.vo.DashboardVO;
 import com.chronic.modules.chronic.vo.PatientVO;
 import com.chronic.modules.system.entity.SysUser;
 import com.chronic.modules.system.mapper.SysUserMapper;
 import com.chronic.modules.system.service.DeptResolver;
+import com.chronic.security.LoginUser;
+import com.chronic.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -45,6 +49,9 @@ public class CdPatientServiceImpl implements CdPatientService {
     private final CdHealthScoreMapper healthScoreMapper;
     private final SysUserMapper userMapper;
     private final DeptResolver deptResolver;
+    private final CdPatientDeptService patientDeptService;
+    private final PatientDataScopeService dataScopeService;
+
 
     /** 病种编码 -> 名称 */
     private static final Map<String, String> DISEASE_NAME = Map.of(
@@ -81,13 +88,21 @@ public class CdPatientServiceImpl implements CdPatientService {
         wrapper.eq(StringUtils.hasText(query.getStatus()), CdPatient::getStatus, query.getStatus())
                .eq(query.getDoctorId() != null, CdPatient::getDoctorId, query.getDoctorId());
 
-        // 科室筛选：以责任医生所在科室为准，先把科室展开为医生集合
-        if (query.getDeptId() != null) {
-            Set<Long> doctorIds = deptResolver.userIdsOfDept(query.getDeptId());
-            if (doctorIds.isEmpty()) {
+        // 数据范围：医生只能看到「已勾选自己所在科室」（或是自己负责）的患者；管理员不受限制
+        Set<Long> visiblePatientIds = dataScopeService.visiblePatientIds();
+        if (visiblePatientIds != null) {
+            if (visiblePatientIds.isEmpty()) {
                 return PageResult.of(0L, new ArrayList<>());
             }
-            wrapper.in(CdPatient::getDoctorId, doctorIds);
+            wrapper.in(CdPatient::getPatientId, visiblePatientIds);
+        }
+        // 科室筛选：以患者可见科室（cd_patient_dept）为准，与数据范围口径保持一致
+        if (query.getDeptId() != null) {
+            Set<Long> deptPatientIds = patientDeptService.patientIdsOfDept(query.getDeptId());
+            if (deptPatientIds.isEmpty()) {
+                return PageResult.of(0L, new ArrayList<>());
+            }
+            wrapper.in(CdPatient::getPatientId, deptPatientIds);
         }
 
         // 病种筛选
@@ -113,6 +128,7 @@ public class CdPatientServiceImpl implements CdPatientService {
 
     @Override
     public PatientVO getPatientDetail(Long patientId) {
+        dataScopeService.checkAccess(patientId);
         CdPatient patient = patientMapper.selectById(patientId);
         if (patient == null) {
             throw new ServiceException("患者不存在");
@@ -172,7 +188,18 @@ public class CdPatientServiceImpl implements CdPatientService {
             patient.setPendingWarningCount(0);
         }
 
+        // 先落库拿到 patientId，科室关联依赖它
         patientMapper.insert(patient);
+
+        // 患者可见科室：医生端代选优先；未选择则默认责任医生所在科室，保证医生永远看得到自己负责的患者
+        List<Long> deptIds = patient.getDeptIds() == null ? new ArrayList<>() : patient.getDeptIds();
+        if (deptIds.stream().filter(Objects::nonNull).findAny().isEmpty() && patient.getDeptId() != null) {
+            deptIds = List.of(patient.getDeptId());
+        }
+        if (!deptIds.isEmpty()) {
+            patientDeptService.fillIfEmpty(patient.getPatientId(), deptIds, "2");
+        }
+
         savePatientDisease(patient.getPatientId(), patient.getDiseaseCodes());
         return patient.getPatientId();
     }
@@ -194,7 +221,13 @@ public class CdPatientServiceImpl implements CdPatientService {
         // 科室跟随责任医生，忽略前端传入值
         patient.setDeptId(deptResolver.deptIdOfDoctor(patient.getDoctorId()));
         patientMapper.updateById(patient);
-
+        // 患者可见科室：传了就覆盖；传空视为不修改，避免误清空
+        if (patient.getDeptIds() != null && patient.getDeptIds().stream().anyMatch(Objects::nonNull)) {
+            patientDeptService.replace(patient.getPatientId(), patient.getDeptIds(), "2");
+        } else if (patientDeptService.deptIdsOf(patient.getPatientId()).isEmpty() && patient.getDeptId() != null) {
+            // 兜底：患者没有任何可见科室时，默认责任医生所在科室
+            patientDeptService.fillIfEmpty(patient.getPatientId(), List.of(patient.getDeptId()), "2");
+        }
         // 病种变动则重建关联
         if (patient.getDiseaseCodes() != null) {
             patientDiseaseMapper.delete(Wrappers.<CdPatientDisease>lambdaQuery()
@@ -207,12 +240,15 @@ public class CdPatientServiceImpl implements CdPatientService {
     @Transactional(rollbackFor = Exception.class)
     public void deletePatient(Long[] patientIds) {
         patientMapper.deleteByIds(Arrays.asList(patientIds));
+        // 同步清理可见科室关联，避免留下孤儿数据
+        patientDeptService.removeByPatients(Arrays.asList(patientIds));
         patientDiseaseMapper.delete(Wrappers.<CdPatientDisease>lambdaQuery()
                 .in(CdPatientDisease::getPatientId, Arrays.asList(patientIds)));
     }
 
     @Override
     public DashboardVO getDashboard(Long patientId) {
+        dataScopeService.checkAccess(patientId);
         DashboardVO vo = new DashboardVO();
         vo.setPatient(getPatientDetail(patientId));
 
@@ -270,6 +306,7 @@ public class CdPatientServiceImpl implements CdPatientService {
     @Override
     public List<Map<String, Object>> getMeasureTrend(Long patientId, String indicatorCode,
                                                      String beginTime, String endTime) {
+        dataScopeService.checkAccess(patientId);
         List<CdMeasure> list = measureMapper.selectList(Wrappers.<CdMeasure>lambdaQuery()
                 .eq(CdMeasure::getPatientId, patientId)
                 .eq(StringUtils.hasText(indicatorCode), CdMeasure::getIndicatorCode, indicatorCode)
@@ -346,6 +383,11 @@ public class CdPatientServiceImpl implements CdPatientService {
         }
         Map<Long, String> deptNameMap = deptResolver.deptNames(doctorDeptMap.values());
 
+        // 患者自选科室（可见范围），与责任医生科室是两回事
+        Map<Long, List<Long>> patientDeptMap = patientDeptService.deptIdsOfPatients(patientIds);
+        Map<Long, String> visibleDeptNameMap = deptResolver.deptNames(
+                patientDeptMap.values().stream().flatMap(List::stream).collect(Collectors.toSet()));
+
         Map<Long, CdHealthScore> latestScoreMap = latestScores(patientIds);
 
         for (CdPatient p : patients) {
@@ -360,6 +402,10 @@ public class CdPatientServiceImpl implements CdPatientService {
             Long ownerDeptId = doctorDeptMap.get(p.getDoctorId());
             vo.setDeptId(ownerDeptId);
             vo.setDeptName(ownerDeptId == null ? null : deptNameMap.get(ownerDeptId));
+            List<Long> visibleDepts = patientDeptMap.getOrDefault(p.getPatientId(), new ArrayList<>());
+            vo.setDeptIds(visibleDepts);
+            vo.setDeptNames(visibleDepts.stream().map(visibleDeptNameMap::get)
+                    .filter(java.util.Objects::nonNull).collect(Collectors.toList()));
             vo.setAge(calcAge(p.getBirthday()));
             vo.setDiseases(diseaseMap.getOrDefault(p.getPatientId(), new ArrayList<>()));
             vos.add(vo);
@@ -442,7 +488,11 @@ public class CdPatientServiceImpl implements CdPatientService {
         for (CdHealthScore score : healthScoreMapper.selectLatestPerPatient()) {
             latestScoreMap.put(score.getPatientId(), score);
         }
-        List<CdPatient> allPatients = patientMapper.selectList(Wrappers.<CdPatient>lambdaQuery());
+        // 看板与列表同口径：医生只看自己科室范围内的患者，管理员看全部
+        Set<Long> visibleIds = dataScopeService.visiblePatientIds();
+        List<CdPatient> allPatients = visibleIds != null && visibleIds.isEmpty() ? new ArrayList<>()
+                : patientMapper.selectList(Wrappers.<CdPatient>lambdaQuery()
+                        .in(visibleIds != null, CdPatient::getPatientId, visibleIds));
         long lowRisk = 0;
         long midRisk = 0;
         long highRisk = 0;
@@ -488,6 +538,7 @@ public class CdPatientServiceImpl implements CdPatientService {
 
     @Override
     public java.util.Map<String, Object> getProfile(Long patientId) {
+        dataScopeService.checkAccess(patientId);
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("patient", getPatientDetail(patientId));
 

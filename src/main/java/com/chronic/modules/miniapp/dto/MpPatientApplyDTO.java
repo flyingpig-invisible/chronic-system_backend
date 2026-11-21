@@ -32,4 +32,7 @@ public class MpPatientApplyDTO {
     private String diseaseCodes;
 
     private String applyRemark;
+
+    @Schema(description = "可见科室ID集合，至少一个：只有这些科室的医生能查看患者信息")
+    private java.util.List<Long> deptIds;
 }

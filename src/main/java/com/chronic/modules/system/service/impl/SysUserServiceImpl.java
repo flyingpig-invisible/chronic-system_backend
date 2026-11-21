@@ -5,7 +5,9 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.chronic.common.exception.ServiceException;
 import com.chronic.common.result.PageResult;
+import com.chronic.modules.system.entity.SysDept;
 import com.chronic.modules.system.entity.SysUser;
+import com.chronic.modules.system.mapper.SysDeptMapper;
 import com.chronic.modules.system.mapper.SysUserMapper;
 import com.chronic.modules.system.query.UserQuery;
 import com.chronic.modules.system.service.SysUserService;
@@ -34,6 +36,9 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 
     @Autowired
     private DeptResolver deptResolver;
+
+    @Autowired
+    private SysDeptMapper deptMapper;
 
     @Override
     public PageResult<SysUser> queryPage(UserQuery query) {
@@ -84,6 +89,10 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         if (!StringUtils.hasText(user.getStatus())) {
             user.setStatus("0");
         }
+        // 医生必须归属科室：患者可见范围按科室划分，没有科室的医生看不到任何患者
+        if ("1".equals(user.getUserType())) {
+            validateDoctorDept(user.getDeptId());
+        }
         save(user);
     }
 
@@ -109,7 +118,24 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
             }
             user.setUsername(validateUsername(newUsername, target.getUserId()));
         }
+        // 医生必须保有所属科室：患者可见范围按科室划分，没有科室的医生看不到任何患者
+        String userType = StringUtils.hasText(user.getUserType()) ? user.getUserType() : target.getUserType();
+        if ("1".equals(userType)) {
+            validateDoctorDept(user.getDeptId());
+        }
         updateById(user);
+    }
+
+    /** 校验医生所属科室：必填、存在且启用 */
+    private Long validateDoctorDept(Long deptId) {
+        if (deptId == null) {
+            throw new ServiceException("请选择所属科室");
+        }
+        SysDept dept = deptMapper.selectById(deptId);
+        if (dept == null || !"0".equals(dept.getStatus())) {
+            throw new ServiceException("所属科室不存在或已停用");
+        }
+        return deptId;
     }
 
     /** 用户名规则与小程序端一致：字母/数字开头，仅字母数字下划线，4~20 位 */

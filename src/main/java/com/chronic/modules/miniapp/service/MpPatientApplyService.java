@@ -25,6 +25,12 @@ public interface MpPatientApplyService {
     /** 医生端审核：通过则按申请信息创建档案并关联小程序账号 */
     Long audit(Long applyId, String result, String auditOpinion, Long doctorId);
 
+    /**
+     * 注册时选中的可见科室落库：写入该账号的建档申请记录，
+     * 尚无申请时先建一条草稿，供医生审核建档时一并写入 cd_patient_dept。
+     */
+    void saveRegisterDepts(com.chronic.modules.miniapp.entity.MpUser user, List<Long> deptIds);
+
     /** 待审核数量 */
     long pendingCount();
 }

@@ -1,4 +1,4 @@
-package com.chronic.modules.miniapp.service.impl;
+package com.chronic.modules.miniapp.service;
 
 import cn.hutool.json.JSONObject;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -13,6 +13,7 @@ import com.chronic.modules.miniapp.dto.MpResetDTO;
 import com.chronic.modules.miniapp.entity.MpUser;
 import com.chronic.modules.miniapp.mapper.MpUserMapper;
 import com.chronic.modules.miniapp.service.MpAuthService;
+import com.chronic.modules.miniapp.service.MpPatientApplyService;
 import com.chronic.modules.miniapp.vo.MpLoginVO;
 import com.chronic.modules.miniapp.vo.MpUserVO;
 import com.chronic.security.LoginUser;
@@ -50,6 +51,7 @@ public class MpAuthServiceImpl implements MpAuthService {
     private final MpUserMapper userMapper;
     private final MpPatientMapper patientMapper;
     private final PasswordEncoder passwordEncoder;
+    private final MpPatientApplyService applyService;
     private final JwtUtils jwtUtils;
     private final WxAuthHelper wxAuthHelper;
 
@@ -94,6 +96,11 @@ public class MpAuthServiceImpl implements MpAuthService {
         return user;
     }
 
+    /**
+     * 注册时选中的可见科室暂存在 mp_user 上：此时患者还没有 cd_patient 档案，
+     * 由医生审核建档通过时写入 cd_patient_dept（注册 → 申请建档 → 审核）。
+     */
+    @Transactional(rollbackFor = Exception.class)
     @Override
     public MpLoginVO register(MpRegisterDTO dto) {
         String phone = dto.getPhone().trim();
@@ -112,6 +119,10 @@ public class MpAuthServiceImpl implements MpAuthService {
         user.setStatus("0");
         user.setCreateTime(LocalDateTime.now());
         userMapper.insert(user);
+        if ("1".equals(role) && dto.getDeptIds() != null && !dto.getDeptIds().isEmpty()) {
+            // 科室直接落库：记在该账号的建档申请上，医生审核建档时写入 cd_patient_dept
+            applyService.saveRegisterDepts(user, dto.getDeptIds());
+        }
 
         // 患者注册后不再按手机号自动认领医生端档案，统一由医生端审核建档申请（mp_patient_apply）
         return buildLogin(user);

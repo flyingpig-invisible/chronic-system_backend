@@ -33,4 +33,7 @@ public class MpRegisterDTO implements Serializable {
 
     /** 患者端自带患者编号时可填写，用于关联医生端已有档案 */
     private String patientNo;
+
+    /** 患者注册时自选可见科室：只有这些科室的医生能查看其信息 */
+    private java.util.List<Long> deptIds;
 }

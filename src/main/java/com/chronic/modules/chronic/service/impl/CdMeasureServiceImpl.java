@@ -17,6 +17,7 @@ import com.chronic.modules.chronic.vo.MeasureGroupVO;
 import com.chronic.modules.chronic.service.CdMeasureService;
 import com.chronic.modules.chronic.service.CdScoreService;
 import com.chronic.modules.chronic.service.CdWarningService;
+import com.chronic.modules.chronic.service.PatientDataScopeService;
 import com.chronic.modules.system.entity.SysIndicator;
 import com.chronic.modules.system.service.SysIndicatorService;
 import lombok.RequiredArgsConstructor;
@@ -54,11 +55,22 @@ public class CdMeasureServiceImpl implements CdMeasureService {
     private final CdWarningService warningService;
     private final CdScoreService scoreService;
     private final SysIndicatorService indicatorService;
+    private final PatientDataScopeService dataScopeService;
 
     private static final DateTimeFormatter DTF = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     @Override
     public PageResult<CdMeasure> pageMeasure(MeasureQuery query) {
+        // 数据范围：医生只能查自己科室可见患者的监测数据；管理员不受限制
+        Set<Long> visiblePatientIds = dataScopeService.visiblePatientIds();
+        if (visiblePatientIds != null) {
+            if (visiblePatientIds.isEmpty()) {
+                return PageResult.of(0L, new ArrayList<>());
+            }
+            if (query.getPatientId() != null) {
+                dataScopeService.checkAccess(query.getPatientId());
+            }
+        }
         Page<CdMeasure> page = measureMapper.selectPage(
                 new Page<>(query.getPageNum(), query.getPageSize()), buildWrapper(query));
         return PageResult.of(page);
@@ -255,6 +267,7 @@ public class CdMeasureServiceImpl implements CdMeasureService {
     }
 
     private LambdaQueryWrapper<CdMeasure> buildWrapper(MeasureQuery query) {
+        Set<Long> visiblePatientIds = dataScopeService.visiblePatientIds();
         return Wrappers.<CdMeasure>lambdaQuery()
                 .eq(query.getPatientId() != null, CdMeasure::getPatientId, query.getPatientId())
                 .like(StringUtils.hasText(query.getPatientName()), CdMeasure::getPatientName, query.getPatientName())
@@ -265,6 +278,7 @@ public class CdMeasureServiceImpl implements CdMeasureService {
                         StringUtils.hasText(query.getBeginTime()) ? LocalDateTime.parse(query.getBeginTime(), DTF) : null)
                 .le(StringUtils.hasText(query.getEndTime()), CdMeasure::getMeasureTime,
                         StringUtils.hasText(query.getEndTime()) ? LocalDateTime.parse(query.getEndTime(), DTF) : null)
+                .in(query.getPatientId() == null && visiblePatientIds != null, CdMeasure::getPatientId, visiblePatientIds)
                 .orderByDesc(CdMeasure::getMeasureTime);
     }
 

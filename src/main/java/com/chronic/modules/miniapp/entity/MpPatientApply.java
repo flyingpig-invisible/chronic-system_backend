@@ -46,6 +46,9 @@ public class MpPatientApply implements Serializable {
 
     private String applyRemark;
 
+    @Schema(description = "患者自选的可见科室，逗号分隔的科室ID；为空表示未选择")
+    private String deptIds;
+
     @Schema(description = "审核状态：0待审核 1已通过 2已驳回")
     private String applyStatus;
 

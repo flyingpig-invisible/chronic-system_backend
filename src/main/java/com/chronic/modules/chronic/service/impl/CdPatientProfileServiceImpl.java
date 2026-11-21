@@ -11,6 +11,7 @@ import com.chronic.modules.chronic.mapper.CdPatientMapper;
 import com.chronic.modules.chronic.mapper.CdPatientProfileLogMapper;
 import com.chronic.modules.chronic.mapper.CdPatientProfileMapper;
 import com.chronic.modules.chronic.service.CdPatientProfileService;
+import com.chronic.modules.chronic.service.PatientDataScopeService;
 import com.chronic.modules.chronic.vo.ProfileVO;
 import com.chronic.modules.miniapp.entity.MpFamilyPatient;
 import com.chronic.modules.miniapp.mapper.MpFamilyPatientMapper;
@@ -40,6 +41,7 @@ public class CdPatientProfileServiceImpl implements CdPatientProfileService {
     private final CdPatientProfileLogMapper logMapper;
     private final CdPatientMapper patientMapper;
     private final MpFamilyPatientMapper familyPatientMapper;
+    private final PatientDataScopeService dataScopeService;
 
     /** 医疗类字段（仅医生可编辑） */
     private static final List<String> MEDICAL_FIELDS = List.of(
@@ -73,6 +75,8 @@ public class CdPatientProfileServiceImpl implements CdPatientProfileService {
 
     @Override
     public ProfileVO getProfileForDoctor(Long patientId) {
+        // 医生只能读取自己科室可见患者的专属档案
+        dataScopeService.checkAccess(patientId);
         requirePatient(patientId);
         return buildVO(patientId, "doctor");
     }
@@ -128,6 +132,9 @@ public class CdPatientProfileServiceImpl implements CdPatientProfileService {
     @Transactional(rollbackFor = Exception.class)
     public void saveProfile(ProfileSaveDTO dto, boolean familyOnly) {
         Long patientId = dto.getPatientId();
+        if (!familyOnly) {
+            dataScopeService.checkAccess(patientId);
+        }
         CdPatient patient = requirePatient(patientId);
 
         LoginUser user = SecurityUtils.getLoginUser();

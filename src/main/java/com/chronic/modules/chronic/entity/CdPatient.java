@@ -103,4 +103,7 @@ public class CdPatient implements Serializable {
     @Schema(description = "病种编码集合（提交用）")
     @TableField(exist = false)
     private List<String> diseaseCodes;
+    @Schema(description = "患者可见科室ID（提交用，只有这些科室的医生能查看该患者）")
+    @TableField(exist = false)
+    private List<Long> deptIds;
 }

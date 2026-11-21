@@ -46,6 +46,12 @@ public class PatientVO implements Serializable {
 
     private String deptName;
 
+    @Schema(description = "患者可见科室ID（只有这些科室的医生能查看该患者）")
+    private List<Long> deptIds;
+
+    @Schema(description = "患者可见科室名称")
+    private List<String> deptNames;
+
     @Schema(description = "风险等级：1低危 2中危 3高危")
     private String riskLevel;
 
