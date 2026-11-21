@@ -29,4 +29,8 @@ public class MpFamilyPatient implements Serializable {
     private String relation;
 
     private LocalDateTime bindTime;
+
+    /** 患者姓名（非表字段，仅用于小程序展示） */
+    @TableField(exist = false)
+    private String patientName;
 }

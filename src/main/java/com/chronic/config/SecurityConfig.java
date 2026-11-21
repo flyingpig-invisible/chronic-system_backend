@@ -67,11 +67,11 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
-                    .requestMatchers(WHITE_LIST).permitAll()
-                    .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                    .anyRequest().authenticated()
-            )
+            .authorizeHttpRequests(auth -> {
+                auth.requestMatchers(WHITE_LIST).permitAll();
+                auth.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .anyRequest().authenticated();
+            })
             .exceptionHandling(ex -> ex
                     .authenticationEntryPoint((request, response, e) ->
                             writeJson(response, Result.error(ResultCode.UNAUTHORIZED, "未登录或登录已过期")))

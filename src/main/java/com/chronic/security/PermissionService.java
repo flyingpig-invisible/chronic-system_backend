@@ -2,8 +2,10 @@ package com.chronic.security;
 
 import com.chronic.modules.system.entity.SysRole;
 import com.chronic.modules.system.mapper.SysRoleMapper;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -14,6 +16,7 @@ import java.util.stream.Collectors;
  *
  * @author chronic
  */
+@Slf4j
 @Service("ss")
 @RequiredArgsConstructor
 public class PermissionService {
@@ -38,7 +41,11 @@ public class PermissionService {
             return true;
         }
         List<String> permissions = permissionsOf(user.getUserId());
-        return permissions.contains("*:*:*") || permissions.contains(permission);
+        boolean granted = permissions.contains("*:*:*") || permissions.contains(permission);
+        if (!granted) {
+            log.debug("权限不足：userId={} 需要 {}", user.getUserId(), permission);
+        }
+        return granted;
     }
 
     /** 校验角色标识 */

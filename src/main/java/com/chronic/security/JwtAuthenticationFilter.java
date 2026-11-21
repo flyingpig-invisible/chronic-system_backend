@@ -59,8 +59,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private String resolveToken(HttpServletRequest request) {
         String header = request.getHeader(jwtProperties.getHeader());
-        if (header != null && header.startsWith(jwtProperties.getPrefix())) {
-            return header.substring(jwtProperties.getPrefix().length());
+        if (header == null || header.isBlank()) {
+            return null;
+        }
+        String value = header.trim();
+        String prefix = jwtProperties.getPrefix();
+        if (prefix != null && value.startsWith(prefix)) {
+            return value.substring(prefix.length()).trim();
+        }
+        // 兼容不带 Bearer 前缀的客户端（如 Knife4j 的 Authorize 会原样发送填写内容）
+        if (value.split("\\.").length == 3) {
+            return value;
         }
         return null;
     }

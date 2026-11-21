@@ -10,6 +10,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
  * 全局异常处理
@@ -40,6 +41,16 @@ public class GlobalExceptionHandler {
     public Result<Void> handleAccessDenied(AccessDeniedException e, HttpServletRequest request) {
         log.warn("权限不足 [{}] {}", request.getRequestURI(), e.getMessage());
         return Result.error(ResultCode.FORBIDDEN, "没有访问权限");
+    }
+
+    /**
+     * 静态资源不存在（浏览器会自动请求 /favicon.ico）
+     * 这类请求不属于系统异常，只记 debug，避免刷屏
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public Result<Void> handleNoResource(NoResourceFoundException e, HttpServletRequest request) {
+        log.debug("资源不存在 [{}] {}", request.getRequestURI(), e.getMessage());
+        return Result.error(ResultCode.NOT_FOUND, "资源不存在");
     }
 
     /** 其他异常 */

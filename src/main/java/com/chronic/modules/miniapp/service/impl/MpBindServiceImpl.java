@@ -153,8 +153,30 @@ public class MpBindServiceImpl extends ServiceImpl<MpBindApplyMapper, MpBindAppl
     @Override
     public List<MpFamilyPatient> myPatients() {
         LoginUser loginUser = SecurityUtils.getLoginUser();
-        return familyPatientMapper.selectList(new LambdaQueryWrapper<MpFamilyPatient>()
+        if (loginUser == null) {
+            throw new ServiceException(401, "未登录");
+        }
+        List<MpFamilyPatient> list = familyPatientMapper.selectList(new LambdaQueryWrapper<MpFamilyPatient>()
                 .eq(MpFamilyPatient::getFamilyUserId, loginUser.getUserId()));
+        // 患者本人：把"自己"也作为一条可查看的患者返回（relation=self），
+        // 这样小程序患者端登录后能直接拿到自己的 patientId
+        if ("1".equals(loginUser.getMpRole())) {
+            CdPatient self = patientMapper.selectOne(new LambdaQueryWrapper<CdPatient>()
+                    .eq(CdPatient::getMpUserId, loginUser.getUserId())
+                    .last("limit 1"));
+            if (self != null) {
+                boolean exists = list.stream().anyMatch(p -> self.getPatientId().equals(p.getPatientId()));
+                if (!exists) {
+                    MpFamilyPatient mine = new MpFamilyPatient();
+                    mine.setFamilyUserId(loginUser.getUserId());
+                    mine.setPatientId(self.getPatientId());
+                    mine.setRelation("self");
+                    mine.setPatientName(self.getName());
+                    list.add(0, mine);
+                }
+            }
+        }
+        return list;
     }
 
     @Override
