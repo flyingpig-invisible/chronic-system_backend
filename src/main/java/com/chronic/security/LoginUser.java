@@ -27,7 +27,7 @@ public class LoginUser implements Serializable {
     /** 真实姓名 */
     private String realName;
 
-    /** 用户类型：sys 系统用户 / mp 小程序用户 */
+    /** 用户类型：1 医生/普通用户、2 系统管理员、mp 小程序用户（存 JWT 原值，勿归一化） */
     private String userType;
 
     /** 小程序角色：1患者 2家属（userType=mp 时有值） */

@@ -34,8 +34,9 @@ public class PermissionService {
         if (user == null) {
             return false;
         }
+        // 小程序端（患者/家属）没有后台权限体系，不能访问后台管理接口
         if ("mp".equals(user.getUserType())) {
-            return true;
+            return false;
         }
         if (isSysAdmin(user)) {
             return true;
@@ -62,7 +63,7 @@ public class PermissionService {
 
     /** 是否系统管理员：仅 user_type=2 的系统用户 */
     public boolean isSysAdmin(LoginUser user) {
-        return user != null && !"mp".equals(user.getUserType()) && "2".equals(user.getUserType());
+        return user != null && "2".equals(user.getUserType());
     }
 
     private List<String> permissionsOf(Long userId) {

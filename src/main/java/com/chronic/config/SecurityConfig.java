@@ -45,6 +45,8 @@ public class SecurityConfig {
             "/mp/auth/login",
             "/mp/auth/register",
             "/mp/auth/reset-password",
+            // 注册页需要展示科室选项，此时用户尚未登录（仅返回科室名称，无隐私数据）
+            "/mp/dept/options",
             "/doc.html",
             "/webjars/**",
             "/v3/api-docs/**",
@@ -70,7 +72,6 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> {
                 auth.requestMatchers(WHITE_LIST).permitAll();
-                // 小程序端接口统一 /mp/** 前缀，除登录注册外均需登录
                 auth.requestMatchers(org.springframework.security.web.util.matcher.AntPathRequestMatcher.antMatcher("/mp/**")).authenticated();
                 auth.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .anyRequest().authenticated();
@@ -81,7 +82,10 @@ public class SecurityConfig {
                     .accessDeniedHandler((request, response, e) ->
                             writeJson(response, Result.error(ResultCode.FORBIDDEN, "没有访问权限")))
             )
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+            // 请求结束时清理数据权限的请求级缓存，避免线程复用时串号
+            .addFilterAfter(new com.chronic.security.PatientDataScopeInterceptor.CacheClearFilter(),
+                    UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
