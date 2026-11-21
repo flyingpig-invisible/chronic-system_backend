@@ -21,7 +21,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -68,6 +70,34 @@ public class MpContentServiceImpl implements MpContentService {
                     vo.setBindTime(d.getBindTime());
                     return vo;
                 }).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<MpDeviceVO> scanDevices(Long patientId) {
+        accessService.resolvePatientId(patientId);
+        List<MpDeviceVO> rows = new ArrayList<>();
+        getScanCatalog().forEach((name, type) -> {
+            MpDeviceVO vo = new MpDeviceVO();
+            vo.setDeviceNo(name);
+            vo.setDeviceName(name);
+            vo.setDeviceType(type);
+            vo.setDeviceTypeName(DEVICE_TYPE.getOrDefault(type, "健康设备"));
+            vo.setVendor("HUAWEI");
+            vo.setModelName(name);
+            vo.setOnlineStatus("0");
+            rows.add(vo);
+        });
+        return rows;
+    }
+
+    /** 模拟蓝牙扫描目录：广播名 -> 设备类型 */
+    private Map<String, String> getScanCatalog() {
+        Map<String, String> catalog = new LinkedHashMap<>();
+        catalog.put("HUAWEI Band 10-4A7", "1");
+        catalog.put("HUAWEI Watch GT 5-1F3", "1");
+        catalog.put("HUAWEI 血压计-A3C", "2");
+        catalog.put("HUAWEI 血压计-B7E", "2");
+        return catalog;
     }
 
     @Override

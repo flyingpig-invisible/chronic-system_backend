@@ -11,11 +11,14 @@ import com.chronic.modules.chronic.entity.CdWarning;
 import com.chronic.modules.chronic.mapper.CdMeasureMapper;
 import com.chronic.modules.chronic.mapper.CdPatientMapper;
 import com.chronic.modules.chronic.mapper.CdWarningMapper;
+import com.chronic.modules.chronic.dto.MeasureEntryDTO;
 import com.chronic.modules.chronic.query.MeasureQuery;
 import com.chronic.modules.chronic.vo.MeasureGroupVO;
 import com.chronic.modules.chronic.service.CdMeasureService;
 import com.chronic.modules.chronic.service.CdScoreService;
 import com.chronic.modules.chronic.service.CdWarningService;
+import com.chronic.modules.system.entity.SysIndicator;
+import com.chronic.modules.system.service.SysIndicatorService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -28,8 +31,12 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * 监测数据服务实现
@@ -46,6 +53,7 @@ public class CdMeasureServiceImpl implements CdMeasureService {
     private final CdWarningMapper warningMapper;
     private final CdWarningService warningService;
     private final CdScoreService scoreService;
+    private final SysIndicatorService indicatorService;
 
     private static final DateTimeFormatter DTF = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -154,6 +162,83 @@ public class CdMeasureServiceImpl implements CdMeasureService {
         }
     }
 
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public List<Long> addMeasureOnce(Long patientId, String diseaseCode, LocalDateTime measureTime,
+                                     String dataSource, List<MeasureEntryDTO> entries) {
+        if (patientId == null) {
+            throw new ServiceException("患者ID不能为空");
+        }
+        if (entries == null || entries.isEmpty()) {
+            throw new ServiceException("请至少录入一项指标");
+        }
+        CdPatient patient = patientMapper.selectById(patientId);
+        if (patient == null) {
+            throw new ServiceException("患者不存在");
+        }
+        LocalDateTime time = measureTime == null ? LocalDateTime.now() : measureTime;
+        String source = StringUtils.hasText(dataSource) ? dataSource : "2";
+
+        // 一次测量内的指标不允许重复，否则会撞 (patient_id, indicator_code, measure_time) 唯一键
+        Set<String> seen = new LinkedHashSet<>();
+        for (MeasureEntryDTO entry : entries) {
+            if (entry == null || !StringUtils.hasText(entry.getIndicatorCode())) {
+                throw new ServiceException("请选择指标");
+            }
+            if (entry.getValue() == null) {
+                throw new ServiceException("请输入「" + entry.getIndicatorCode() + "」的数值");
+            }
+            if (!seen.add(entry.getIndicatorCode())) {
+                throw new ServiceException("同一指标不能重复录入");
+            }
+        }
+
+        // 指标名称、单位一律取指标字典，字典中没有的编码直接拒绝，避免手工拼出的"野生指标"
+        Map<String, SysIndicator> dictionary = indicatorService.listEnabled().stream()
+                .collect(Collectors.toMap(SysIndicator::getIndicatorCode, Function.identity(), (a, b) -> a));
+
+        List<Long> ids = new ArrayList<>();
+        for (MeasureEntryDTO entry : entries) {
+            SysIndicator indicator = dictionary.get(entry.getIndicatorCode());
+            if (indicator == null) {
+                throw new ServiceException("指标「" + entry.getIndicatorCode() + "」不在指标字典中");
+            }
+            CdMeasure measure = new CdMeasure();
+            measure.setPatientId(patientId);
+            measure.setPatientName(patient.getName());
+            measure.setDiseaseCode(StringUtils.hasText(diseaseCode) ? diseaseCode : null);
+            measure.setIndicatorCode(indicator.getIndicatorCode());
+            measure.setIndicatorName(indicator.getIndicatorName());
+            measure.setUnit(indicator.getUnit());
+            measure.setValue(entry.getValue());
+            measure.setMeasureTime(time);
+            measure.setDataSource(source);
+            measure.setAbnormalFlag("0");
+            measureMapper.insert(measure);
+            ids.add(measure.getMeasureId());
+
+            warningService.checkAndCreateWarning(patientId, patient.getName(), indicator.getIndicatorCode(),
+                    entry.getValue(), indicator.getUnit(), measure.getMeasureId());
+        }
+
+        CdPatient update = new CdPatient();
+        update.setPatientId(patientId);
+        update.setLastMeasureTime(time);
+        patientMapper.updateById(update);
+
+        // 多个指标一次录入，只在本组全部写入后重算一次评分
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    scoreService.calcScore(patientId);
+                } catch (Exception e) {
+                    log.warn("录入后重算评分失败：patientId={} err={}", patientId, e.getMessage());
+                }
+            }
+        });
+        return ids;
+    }
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void deleteMeasure(Long[] measureIds) {

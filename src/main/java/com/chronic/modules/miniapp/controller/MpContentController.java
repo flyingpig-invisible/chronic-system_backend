@@ -28,6 +28,12 @@ public class MpContentController {
 
     private final MpContentService contentService;
 
+    @Operation(summary = "模拟扫描附近蓝牙设备")
+    @GetMapping("/device/scan")
+    public Result<List<MpDeviceVO>> scan(@RequestParam(required = false) Long patientId) {
+        return Result.success(contentService.scanDevices(patientId));
+    }
+
     @Operation(summary = "已绑定设备")
     @GetMapping("/device/list")
     public Result<List<MpDeviceVO>> devices(@RequestParam(required = false) Long patientId) {

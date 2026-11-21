@@ -1,6 +1,7 @@
 package com.chronic.modules.miniapp.controller;
 
 import com.chronic.common.result.Result;
+import com.chronic.modules.chronic.dto.MeasureOnceDTO;
 import com.chronic.modules.chronic.entity.CdMeasure;
 import com.chronic.modules.miniapp.service.MpPatientService;
 import com.chronic.modules.miniapp.vo.MpDashboardVO;
@@ -8,8 +9,10 @@ import com.chronic.modules.miniapp.vo.MpDiseaseVO;
 import com.chronic.modules.miniapp.vo.MpIndicatorVO;
 import com.chronic.modules.miniapp.vo.MpPatientVO;
 import com.chronic.modules.miniapp.vo.MpTrendVO;
+import com.chronic.modules.system.entity.SysIndicator;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -73,6 +76,17 @@ public class MpPatientController {
         return Result.success(patientService.trend(patientId, days));
     }
 
+    @Operation(summary = "录入用指标字典")
+    @GetMapping("/indicator-options")
+    public Result<List<SysIndicator>> indicatorOptions() {
+        return Result.success(patientService.indicatorOptions());
+    }
+
+    @Operation(summary = "一次录入多个指标")
+    @PostMapping("/measures")
+    public Result<List<Long>> addMeasures(@Valid @RequestBody MeasureOnceDTO dto) {
+        return Result.success("录入成功", patientService.addMeasures(dto));
+    }
     @Operation(summary = "手动录入监测数据")
     @PostMapping("/measure")
     public Result<Long> addMeasure(@RequestBody CdMeasure measure) {

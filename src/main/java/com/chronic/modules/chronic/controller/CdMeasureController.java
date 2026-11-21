@@ -3,6 +3,7 @@ package com.chronic.modules.chronic.controller;
 import com.chronic.common.result.PageResult;
 import com.chronic.common.result.Result;
 import com.chronic.common.utils.ExcelUtils;
+import com.chronic.modules.chronic.dto.MeasureOnceDTO;
 import com.chronic.modules.chronic.entity.CdMeasure;
 import com.chronic.modules.chronic.query.MeasureQuery;
 import com.chronic.modules.chronic.vo.MeasureGroupVO;
@@ -10,6 +11,7 @@ import com.chronic.modules.chronic.service.CdMeasureService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -66,6 +68,13 @@ public class CdMeasureController {
         return Result.success("录入成功", measureService.addMeasure(measure));
     }
 
+    @Operation(summary = "一次测量录入多个指标")
+    @PreAuthorize("@ss.hasPermi('chronic:measure:add')")
+    @PostMapping("/once")
+    public Result<List<Long>> addOnce(@Valid @RequestBody MeasureOnceDTO dto) {
+        return Result.success("录入成功", measureService.addMeasureOnce(dto.getPatientId(), dto.getDiseaseCode(),
+                dto.getMeasureTime(), dto.getDataSource(), dto.getEntries()));
+    }
     @Operation(summary = "批量上报监测数据")
     @PreAuthorize("@ss.hasPermi('chronic:measure:add')")
     @PostMapping("/batch")

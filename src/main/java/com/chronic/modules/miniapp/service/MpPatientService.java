@@ -30,6 +30,11 @@ public interface MpPatientService {
     /** 趋势数据：days 为天数，0 表示全部 */
     List<MpTrendVO> trend(Long patientId, Integer days);
 
+    /** 录入用的指标字典（仅启用指标） */
+    List<com.chronic.modules.system.entity.SysIndicator> indicatorOptions();
+
+    /** 一次录入多个指标：共用同一测量时刻，指标必须来自指标字典 */
+    List<Long> addMeasures(com.chronic.modules.chronic.dto.MeasureOnceDTO dto);
     /** 手写测量数据，写入医生端同一张 cd_measure 表并参与预警评估 */
     Long addMeasure(CdMeasure measure);
 }

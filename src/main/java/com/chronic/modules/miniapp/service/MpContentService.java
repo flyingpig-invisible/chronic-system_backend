@@ -17,6 +17,9 @@ public interface MpContentService {
 
     List<MpDeviceVO> devices(Long patientId);
 
+    /** 模拟扫描附近蓝牙设备（不落库，仅返回可扫描结果） */
+    List<MpDeviceVO> scanDevices(Long patientId);
+
     void unbindDevice(Long patientId, Long deviceId);
 
     PageResult<MpArticleVO> articles(Integer pageNum, Integer pageSize, String keyword, String diseaseCode);

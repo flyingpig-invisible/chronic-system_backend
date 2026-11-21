@@ -22,6 +22,19 @@ public interface CdMeasureService {
 
     void batchAdd(List<CdMeasure> measures);
 
+    /**
+     * 一次测量录入多个指标：共用同一测量时刻，指标必须来自指标字典
+     *
+     * @param patientId   患者ID
+     * @param diseaseCode 病种编码，可空
+     * @param measureTime 测量时刻，空则取当前时间
+     * @param dataSource  数据来源：1设备 2手动
+     * @param entries     指标与数值
+     * @return 写入的监测记录ID
+     */
+    List<Long> addMeasureOnce(Long patientId, String diseaseCode, java.time.LocalDateTime measureTime,
+                              String dataSource, List<com.chronic.modules.chronic.dto.MeasureEntryDTO> entries);
+
     void deleteMeasure(Long[] measureIds);
 
     List<CdMeasure> listForExport(MeasureQuery query);

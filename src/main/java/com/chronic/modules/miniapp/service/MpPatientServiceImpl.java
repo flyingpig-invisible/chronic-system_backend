@@ -20,12 +20,15 @@ import com.chronic.modules.chronic.mapper.CdRemindLogMapper;
 import com.chronic.modules.chronic.mapper.CdRemindMapper;
 import com.chronic.modules.chronic.mapper.CdWarningMapper;
 import com.chronic.modules.chronic.mapper.CdWarningRuleMapper;
+import com.chronic.modules.chronic.dto.MeasureOnceDTO;
 import com.chronic.modules.chronic.service.CdMeasureService;
 import com.chronic.modules.chronic.service.CdPatientService;
 import com.chronic.modules.miniapp.entity.MpFamilyPatient;
 import com.chronic.modules.miniapp.mapper.MpFamilyPatientMapper;
 import com.chronic.modules.miniapp.service.MpAccessService;
 import com.chronic.modules.miniapp.service.MpPatientService;
+import com.chronic.modules.system.entity.SysIndicator;
+import com.chronic.modules.system.service.SysIndicatorService;
 import com.chronic.modules.miniapp.vo.MpDashboardVO;
 import com.chronic.modules.miniapp.vo.MpDiseaseVO;
 import com.chronic.modules.miniapp.vo.MpHealthScoreVO;
@@ -67,6 +70,7 @@ public class MpPatientServiceImpl implements MpPatientService {
     private final MpAccessService accessService;
     private final CdPatientService patientService;
     private final CdMeasureService measureService;
+    private final SysIndicatorService indicatorService;
     private final MpPatientMapper patientMapper;
     private final CdPatientDiseaseMapper patientDiseaseMapper;
     private final CdMeasureMapper measureMapper;
@@ -278,6 +282,24 @@ public class MpPatientServiceImpl implements MpPatientService {
     }
 
     @Override
+    public List<SysIndicator> indicatorOptions() {
+        return indicatorService.listEnabled();
+    }
+
+    @Override
+    public List<Long> addMeasures(MeasureOnceDTO dto) {
+        if (dto == null || dto.getPatientId() == null) {
+            throw new ServiceException("请选择患者");
+        }
+        // 患者本人只能为自己录入；家属可为其绑定患者代录
+        accessService.requirePatient(dto.getPatientId());
+        if (!"1".equals(dto.getDataSource())) {
+            dto.setDataSource("2");
+        }
+        return measureService.addMeasureOnce(dto.getPatientId(), dto.getDiseaseCode(), dto.getMeasureTime(),
+                dto.getDataSource(), dto.getEntries());
+    }
+    @Override
     public Long addMeasure(CdMeasure measure) {
         if (measure == null || measure.getPatientId() == null) {
             throw new ServiceException("请选择患者");
@@ -287,13 +309,16 @@ public class MpPatientServiceImpl implements MpPatientService {
         if (measure.getValue() == null) {
             throw new ServiceException("请输入测量数值");
         }
-        if (!INDICATOR_NAME.containsKey(measure.getIndicatorCode())) {
-            throw new ServiceException("不支持的指标类型");
+        SysIndicator dict = indicatorService.listEnabled().stream()
+                .filter(i -> i.getIndicatorCode().equals(measure.getIndicatorCode()))
+                .findFirst().orElse(null);
+        if (dict == null) {
+            throw new ServiceException("指标不在指标字典中，请从字典中选择");
         }
         measure.setMeasureId(null);
         measure.setPatientName(patient.getName());
-        measure.setIndicatorName(INDICATOR_NAME.get(measure.getIndicatorCode()));
-        measure.setUnit(INDICATOR_UNIT.get(measure.getIndicatorCode()));
+        measure.setIndicatorName(dict.getIndicatorName());
+        measure.setUnit(dict.getUnit());
         measure.setDataSource("2");
         if (measure.getMeasureTime() == null) {
             measure.setMeasureTime(LocalDateTime.now());
