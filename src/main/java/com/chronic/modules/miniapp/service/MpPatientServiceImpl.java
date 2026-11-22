@@ -379,7 +379,8 @@ public class MpPatientServiceImpl implements MpPatientService {
         vo.setAddress(patient.getAddress());
         vo.setDoctorId(patient.getDoctorId());
         vo.setDeptId(patient.getDeptId());
-        com.chronic.modules.chronic.vo.PatientVO detail = patientService.getPatientDetail(patient.getPatientId());
+        // 小程序端已由 accessService 校验过归属，这里不能再走医生端的数据范围校验
+        com.chronic.modules.chronic.vo.PatientVO detail = patientService.getPatientDetailUnscoped(patient.getPatientId());
         vo.setAge(detail.getAge());
         vo.setDoctorName(detail.getDoctorName());
         vo.setDeptName(detail.getDeptName());

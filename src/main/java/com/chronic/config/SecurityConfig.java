@@ -83,9 +83,7 @@ public class SecurityConfig {
                             writeJson(response, Result.error(ResultCode.FORBIDDEN, "没有访问权限")))
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-            // 请求结束时清理数据权限的请求级缓存，避免线程复用时串号
-            .addFilterAfter(new com.chronic.security.PatientDataScopeInterceptor.CacheClearFilter(),
-                    UsernamePasswordAuthenticationFilter.class);
+            ;
 
         return http.build();
     }

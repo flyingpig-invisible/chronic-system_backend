@@ -21,6 +21,12 @@ public interface CdPatientService {
     /** 查询患者详情 */
     PatientVO getPatientDetail(Long patientId);
 
+    /**
+     * 查询患者详情，不做医生数据范围校验。
+     * <p>仅供小程序端使用：调用方（{@code MpAccessService}）已按小程序归属规则校验过访问权。</p>
+     */
+    PatientVO getPatientDetailUnscoped(Long patientId);
+
     /** 新增患者 */
     Long addPatient(CdPatient patient);
 

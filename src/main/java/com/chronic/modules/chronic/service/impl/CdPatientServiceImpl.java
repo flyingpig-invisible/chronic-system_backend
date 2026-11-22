@@ -131,6 +131,16 @@ public class CdPatientServiceImpl implements CdPatientService {
     @Override
     public PatientVO getPatientDetail(Long patientId) {
         dataScopeService.checkAccess(patientId);
+        return buildPatientDetail(patientId);
+    }
+
+    @Override
+    public PatientVO getPatientDetailUnscoped(Long patientId) {
+        return buildPatientDetail(patientId);
+    }
+
+    /** 档案明细：仅做数据组装，不做数据权限校验，调用方必须先自行确认可访问 */
+    private PatientVO buildPatientDetail(Long patientId) {
         CdPatient patient = patientMapper.selectById(patientId);
         if (patient == null) {
             throw new ServiceException("患者不存在");
