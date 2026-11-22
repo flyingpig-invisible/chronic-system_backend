@@ -6,6 +6,7 @@ import com.chronic.modules.chronic.entity.CdMeasure;
 import com.chronic.modules.miniapp.service.MpPatientService;
 import com.chronic.modules.miniapp.vo.MpDashboardVO;
 import com.chronic.modules.miniapp.vo.MpDiseaseVO;
+import com.chronic.modules.miniapp.vo.MpHighRiskItemVO;
 import com.chronic.modules.miniapp.vo.MpIndicatorVO;
 import com.chronic.modules.miniapp.vo.MpPatientVO;
 import com.chronic.modules.miniapp.vo.MpTrendVO;
@@ -61,6 +62,12 @@ public class MpPatientController {
     @GetMapping({"/indicators", "/{patientId}/indicators"})
     public Result<List<MpIndicatorVO>> indicators(@PathVariable(required = false) Long patientId) {
         return Result.success(patientService.latestIndicators(patientId));
+    }
+
+    @Operation(summary = "高危指标提醒（各项最近一次测量命中高危规则）")
+    @GetMapping({"/high-risk", "/{patientId}/high-risk"})
+    public Result<List<MpHighRiskItemVO>> highRisk(@PathVariable(required = false) Long patientId) {
+        return Result.success(patientService.highRiskItems(patientId));
     }
 
     @Operation(summary = "首页概览")

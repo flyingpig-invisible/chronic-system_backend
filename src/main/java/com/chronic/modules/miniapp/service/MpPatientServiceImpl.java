@@ -23,6 +23,7 @@ import com.chronic.modules.chronic.mapper.CdWarningRuleMapper;
 import com.chronic.modules.chronic.dto.MeasureOnceDTO;
 import com.chronic.modules.chronic.service.CdMeasureService;
 import com.chronic.modules.chronic.service.CdPatientService;
+import com.chronic.modules.chronic.service.CdWarningService;
 import com.chronic.modules.miniapp.entity.MpFamilyPatient;
 import com.chronic.modules.miniapp.mapper.MpFamilyPatientMapper;
 import com.chronic.modules.miniapp.service.MpAccessService;
@@ -32,6 +33,7 @@ import com.chronic.modules.system.service.SysIndicatorService;
 import com.chronic.modules.miniapp.vo.MpDashboardVO;
 import com.chronic.modules.miniapp.vo.MpDiseaseVO;
 import com.chronic.modules.miniapp.vo.MpHealthScoreVO;
+import com.chronic.modules.miniapp.vo.MpHighRiskItemVO;
 import com.chronic.modules.miniapp.vo.MpIndicatorVO;
 import com.chronic.modules.miniapp.vo.MpPatientVO;
 import com.chronic.modules.miniapp.vo.MpPointVO;
@@ -70,6 +72,7 @@ public class MpPatientServiceImpl implements MpPatientService {
     private final MpAccessService accessService;
     private final CdPatientService patientService;
     private final CdMeasureService measureService;
+    private final CdWarningService warningService;
     private final SysIndicatorService indicatorService;
     private final MpPatientMapper patientMapper;
     private final CdPatientDiseaseMapper patientDiseaseMapper;
@@ -210,6 +213,49 @@ public class MpPatientServiceImpl implements MpPatientService {
         vo.setMedication(medicationStat(id));
         vo.setServerTime(LocalDateTime.now());
         return vo;
+    }
+
+    @Override
+    public List<MpHighRiskItemVO> highRiskItems(Long patientId) {
+        // 患者本人或家属：patientId 为空时取默认档案；家属未指定时校验可访问的患者
+        accessService.resolvePatientId(patientId);
+        List<Long> ids = accessService.accessiblePatientIds();
+        if (ids.isEmpty()) {
+            return new ArrayList<>();
+        }
+        List<CdMeasure> latestList = measureMapper.selectLatestPerPatientAndIndicator(ids);
+        if (latestList.isEmpty()) {
+            return new ArrayList<>();
+        }
+        // 患者ID -> 姓名，用于弹窗展示「谁的指标异常」
+        Map<Long, String> nameMap = new HashMap<>();
+        patientMapper.selectPatients(ids).forEach(p -> nameMap.put(p.getPatientId(), p.getName()));
+        List<MpHighRiskItemVO> result = new ArrayList<>();
+        for (CdMeasure m : latestList) {
+            if (m.getIndicatorCode() == null || m.getValue() == null) {
+                continue;
+            }
+            CdWarningRule rule = warningService.matchRuleCode(m.getIndicatorCode(), m.getValue());
+            if (rule == null || !"3".equals(rule.getWarningLevel())) {
+                continue;
+            }
+            MpHighRiskItemVO vo = new MpHighRiskItemVO();
+            vo.setPatientId(m.getPatientId());
+            vo.setPatientName(nameMap.getOrDefault(m.getPatientId(), m.getPatientName()));
+            vo.setIndicatorCode(m.getIndicatorCode());
+            vo.setIndicatorName(nameOf(m));
+            vo.setValue(m.getValue());
+            vo.setUnit(unitOf(m));
+            vo.setMeasureTime(m.getMeasureTime());
+            vo.setRuleName(rule.getRuleName());
+            vo.setThresholdDesc(rule.getThresholdDesc());
+            vo.setActionDesc(rule.getActionDesc());
+            result.add(vo);
+        }
+        // 按测量时间倒序，最新的高危项排在最前
+        result.sort(Comparator.comparing(MpHighRiskItemVO::getMeasureTime,
+                Comparator.nullsLast(Comparator.reverseOrder())));
+        return result;
     }
 
     @Override

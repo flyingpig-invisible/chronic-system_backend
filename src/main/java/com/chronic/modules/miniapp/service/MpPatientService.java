@@ -3,6 +3,7 @@ package com.chronic.modules.miniapp.service;
 import com.chronic.modules.chronic.entity.CdMeasure;
 import com.chronic.modules.miniapp.vo.MpDashboardVO;
 import com.chronic.modules.miniapp.vo.MpDiseaseVO;
+import com.chronic.modules.miniapp.vo.MpHighRiskItemVO;
 import com.chronic.modules.miniapp.vo.MpIndicatorVO;
 import com.chronic.modules.miniapp.vo.MpPatientVO;
 import com.chronic.modules.miniapp.vo.MpTrendVO;
@@ -24,6 +25,12 @@ public interface MpPatientService {
     List<MpDiseaseVO> diseases(Long patientId);
 
     List<MpIndicatorVO> latestIndicators(Long patientId);
+
+    /**
+     * 高危指标提醒：各指标「最近一次」测量命中高危规则时返回，用于打开小程序后弹窗告警。
+     * 与总体健康评分无关，只看单个指标。
+     */
+    List<MpHighRiskItemVO> highRiskItems(Long patientId);
 
     MpDashboardVO dashboard(Long patientId);
 
