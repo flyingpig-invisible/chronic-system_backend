@@ -27,6 +27,9 @@ public class CdHealthScore implements Serializable {
     @Schema(description = "加权风险评分")
     private Integer totalScore;
 
+    /** 健康评分(0-100，越高越健康) */
+    private Integer healthScore;
+
     @Schema(description = "风险等级：1低危 2中危 3高危")
     private String riskLevel;
 

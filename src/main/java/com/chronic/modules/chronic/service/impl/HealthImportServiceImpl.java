@@ -315,7 +315,7 @@ public class HealthImportServiceImpl implements HealthImportService {
                 .eq(CdHealthScore::getPatientId, patientId)
                 .orderByDesc(CdHealthScore::getCalcTime)
                 .last("limit 1"));
-        return list.isEmpty() ? null : list.get(0).getTotalScore();
+        return list.isEmpty() ? null : list.get(0).getHealthScore();
     }
 
     private String writeJson(List<ImportIssue> issues) {

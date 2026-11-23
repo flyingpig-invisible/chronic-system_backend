@@ -1,4 +1,4 @@
-package com.chronic.modules.miniapp.service;
+package com.chronic.modules.miniapp.service.impl;
 
 import cn.hutool.json.JSONObject;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;

@@ -57,6 +57,12 @@ public class PatientVO implements Serializable {
 
     private Integer riskScore;
 
+    /** 健康评分(0-100，越高越健康) */
+    private Integer healthScore;
+
+    @Schema(description = "健康等级名称：3良好 2一般 1较差")
+    private String riskLevelName;
+
     private Integer pendingWarningCount;
 
     private LocalDateTime lastMeasureTime;

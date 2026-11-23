@@ -59,6 +59,9 @@ public class CdPatient implements Serializable {
     @Schema(description = "风险评分")
     private Integer riskScore;
 
+    /** 健康评分(0-100，越高越健康) */
+    private Integer healthScore;
+
     @Schema(description = "待处理预警数")
     private Integer pendingWarningCount;
 

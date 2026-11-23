@@ -241,6 +241,6 @@ public class SimDataServiceImpl implements SimDataService {
     /** 评分计算结果会回写患者档案的 risk_score */
     private Integer latestScore(Long patientId) {
         CdPatient patient = patientMapper.selectById(patientId);
-        return patient == null ? null : patient.getRiskScore();
+        return patient == null ? null : patient.getHealthScore();
     }
 }

@@ -15,11 +15,15 @@ public class MpHealthScoreVO implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    private Integer totalScore;
+    /** 健康评分(0-100，越高越健康) */
+    private Integer healthScore;
 
     private String riskLevel;
 
-    private String riskLevelName;
+    /** 健康等级(3良好 2一般 1较差) */
+    private String healthLevel;
+
+    private String healthLevelName;
 
     private LocalDateTime calcTime;
 

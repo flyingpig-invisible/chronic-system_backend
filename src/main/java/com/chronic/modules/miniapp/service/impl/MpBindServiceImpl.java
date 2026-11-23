@@ -161,7 +161,7 @@ public class MpBindServiceImpl implements MpBindService {
             m.put("name", patient.getName());
             m.put("relation", rel.getRelation());
             m.put("bindTime", rel.getBindTime());
-            m.put("riskLevel", patient.getRiskLevel());
+            m.put("healthScore", patient.getHealthScore());
             result.add(m);
         }
         return result;

@@ -49,6 +49,9 @@ public class MpPatientVO implements Serializable {
 
     private String riskLevelName;
 
+    /** 健康评分(0-100，越高越健康) */
+    private Integer healthScore;
+
     private Integer riskScore;
 
     private Integer pendingWarningCount;

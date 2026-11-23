@@ -33,6 +33,6 @@ public class CdRemindLog implements Serializable {
 
     private LocalDateTime checkTime;
 
-    @Schema(description = "打卡状态：0未打卡 1已打卡 2漏服")
+    @Schema(description = "打卡状态：0未打卡 1已打卡(按时) 2漏服 3迟服")
     private String checkStatus;
 }

@@ -32,6 +32,9 @@ public class CdRemindServiceImpl extends ServiceImpl<CdRemindMapper, CdRemind> i
     @Autowired
     private CdPatientMapper patientMapper;
 
+    /** 漏服状态码 */
+    private static final String MISSED = "2";
+
     @Override
     public PageResult<CdRemind> queryPage(RemindQuery query) {
         LambdaQueryWrapper<CdRemind> w = new LambdaQueryWrapper<>();
@@ -178,7 +181,7 @@ public class CdRemindServiceImpl extends ServiceImpl<CdRemindMapper, CdRemind> i
                     log.setPatientId(remind.getPatientId());
                     log.setPlanDate(d);
                     log.setPlanTime(planTime);
-                    log.setCheckStatus(d.isBefore(today) ? "2" : "0");
+                    log.setCheckStatus(d.isBefore(today) || isOverdue(d, planTime) ? MISSED : "0");
                 }
                 result.add(log);
             }
@@ -186,6 +189,27 @@ public class CdRemindServiceImpl extends ServiceImpl<CdRemindMapper, CdRemind> i
         return result;
     }
 
+    /** 计划服药时点超过 2 小时仍未打卡即判为漏服 */
+    private boolean isOverdue(LocalDate planDate, String planTime) {
+        LocalDateTime planAt = planAt(planDate, planTime);
+        return planAt != null && planAt.plusHours(2).isBefore(LocalDateTime.now());
+    }
+
+    /** 计划服药时点 */
+    private LocalDateTime planAt(LocalDate planDate, String planTime) {
+        if (planDate == null) {
+            return null;
+        }
+        String time = StringUtils.hasText(planTime) ? planTime.trim() : "08:00";
+        try {
+            String[] parts = time.split(":");
+            int hour = Integer.parseInt(parts[0].trim());
+            int minute = parts.length > 1 ? Integer.parseInt(parts[1].trim()) : 0;
+            return LocalDateTime.of(planDate, java.time.LocalTime.of(hour, minute));
+        } catch (Exception e) {
+            return null;
+        }
+    }
     @Override
     public void check(Long remindId, String checkStatus) {
         CdRemind remind = getById(remindId);

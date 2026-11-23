@@ -2,9 +2,8 @@ package com.chronic.modules.chronic.controller;
 
 import com.chronic.common.result.PageResult;
 import com.chronic.common.result.Result;
-import com.chronic.modules.chronic.dto.ScoreWeightSaveDTO;
+import com.chronic.modules.chronic.dto.PatientScoreWeightDTO;
 import com.chronic.modules.chronic.entity.CdHealthScore;
-import com.chronic.modules.chronic.entity.CdScoreWeight;
 import com.chronic.modules.chronic.query.ScoreQuery;
 import com.chronic.modules.chronic.service.CdScoreService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -22,7 +21,7 @@ import java.util.Map;
  *
  * @author chronic
  */
-@Tag(name = "11-健康评分", description = "风险评分计算、趋势与权重配置")
+@Tag(name = "11-健康评分", description = "健康分计算、趋势与按患者权重配置")
 @RestController
 @RequestMapping("/chronic/score")
 @RequiredArgsConstructor
@@ -66,33 +65,18 @@ public class CdScoreController {
         return Result.success(scoreService.trend(patientId));
     }
 
-    @Operation(summary = "查询评分权重配置")
+    @Operation(summary = "查询患者评分权重(w1~w4，未配置返回默认值)")
     @PreAuthorize("@ss.hasPermi('chronic:score:list')")
-    @GetMapping("/weight/list")
-    public Result<List<CdScoreWeight>> weightList(@RequestParam(required = false) String diseaseCode) {
-        return Result.success(scoreService.weightList(diseaseCode));
+    @GetMapping("/weight/{patientId}")
+    public Result<Map<String, Object>> patientWeight(@PathVariable Long patientId) {
+        return Result.success(scoreService.patientWeight(patientId));
     }
 
-    @Operation(summary = "修改评分权重（按病种整体覆盖，权重之和须为1）")
+    @Operation(summary = "保存患者评分权重(四项之和须为 1)")
     @PreAuthorize("@ss.hasPermi('chronic:score:list')")
     @PostMapping("/weight/save")
-    public Result<Void> saveWeights(@Valid @RequestBody ScoreWeightSaveDTO dto) {
-        scoreService.saveDiseaseWeights(dto);
-        return Result.success();
-    }
-
-    @Operation(summary = "查询病种综合权重（多病共存时各病种占比，未配置则平分）")
-    @PreAuthorize("@ss.hasPermi('chronic:score:list')")
-    @GetMapping("/weight/combined")
-    public Result<List<Map<String, Object>>> combinedWeights(@RequestParam List<String> diseaseCodes) {
-        return Result.success(scoreService.diseaseWeightList(diseaseCodes));
-    }
-
-    @Operation(summary = "修改病种综合权重（权重之和须为1）")
-    @PreAuthorize("@ss.hasPermi('chronic:score:list')")
-    @PostMapping("/weight/combined/save")
-    public Result<Void> saveCombinedWeights(@RequestBody List<ScoreWeightSaveDTO.DiseaseItem> items) {
-        scoreService.saveCombinedDiseaseWeights(items);
+    public Result<Void> savePatientWeight(@Valid @RequestBody PatientScoreWeightDTO dto) {
+        scoreService.savePatientWeight(dto);
         return Result.success();
     }
 }

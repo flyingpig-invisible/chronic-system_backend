@@ -120,7 +120,7 @@ public class CdPatientServiceImpl implements CdPatientService {
         }
 
            // 排序口径与风险等级一致：以最新评分的等级/分数为准（高危优先、分数高优先、无评分者置后）
-        wrapper.last("ORDER BY (SELECT hs.risk_level FROM cd_health_score hs WHERE hs.patient_id = cd_patient.patient_id ORDER BY hs.calc_time DESC, hs.score_id DESC LIMIT 1) DESC, (SELECT hs.total_score FROM cd_health_score hs WHERE hs.patient_id = cd_patient.patient_id ORDER BY hs.calc_time DESC, hs.score_id DESC LIMIT 1) DESC, patient_id ASC");
+        wrapper.last("ORDER BY (SELECT hs.health_score FROM cd_health_score hs WHERE hs.patient_id = cd_patient.patient_id ORDER BY hs.calc_time DESC, hs.score_id DESC LIMIT 1) DESC, patient_id ASC");
         Page<CdPatient> page = patientMapper.selectPage(
                 new Page<>(query.getPageNum(), query.getPageSize()), wrapper);
 
@@ -154,12 +154,12 @@ public class CdPatientServiceImpl implements CdPatientService {
                 .orderByDesc(CdHealthScore::getScoreId)
                 .last("limit 1"));
         if (latest != null) {
-            vo.setRiskScore(latest.getTotalScore());
-            vo.setRiskLevel(latest.getRiskLevel());
+            vo.setRiskScore(latest.getHealthScore());
+            vo.setRiskLevel(CdScoreServiceImpl.healthLevel(latest.getHealthScore()));
         } else {
             // 无评分记录时：等级由现有分数换算出（与评分口径一致），避免档案等级与分数相互矛盾
-            int scoreValue = vo.getRiskScore() == null ? 0 : vo.getRiskScore();
-            vo.setRiskLevel(scoreValue >= 80 ? "3" : (scoreValue >= 50 ? "2" : "1"));
+            vo.setRiskLevel(CdScoreServiceImpl.healthLevel(vo.getRiskScore()));
+            vo.setRiskLevelName(CdScoreServiceImpl.healthLevelName(vo.getRiskLevel()));
         }
 
         // 填充病种编码
@@ -314,11 +314,11 @@ public class CdPatientServiceImpl implements CdPatientService {
                 .orderByDesc(CdHealthScore::getCalcTime)
                 .last("limit 1"));
         if (score != null) {
-            vo.setRiskScore(score.getTotalScore());
-            vo.setRiskLevel(score.getRiskLevel());
+            vo.setRiskScore(score.getHealthScore());
+            vo.setRiskLevel(CdScoreServiceImpl.healthLevel(score.getHealthScore()));
         } else {
-            vo.setRiskScore(vo.getPatient().getRiskScore());
-            vo.setRiskLevel(vo.getPatient().getRiskLevel());
+            vo.setRiskScore(vo.getPatient().getHealthScore());
+            vo.setRiskLevel(CdScoreServiceImpl.healthLevel(vo.getPatient().getHealthScore()));
         }
         return vo;
     }
@@ -415,9 +415,11 @@ public class CdPatientServiceImpl implements CdPatientService {
             BeanUtils.copyProperties(p, vo);
             CdHealthScore latestScore = latestScoreMap.get(p.getPatientId());
             if (latestScore != null) {
-                vo.setRiskScore(latestScore.getTotalScore());
-                vo.setRiskLevel(latestScore.getRiskLevel());
-            }
+                vo.setRiskScore(latestScore.getHealthScore());
+                vo.setRiskLevel(CdScoreServiceImpl.healthLevel(latestScore.getHealthScore()));
+                }
+            vo.setHealthScore(p.getHealthScore() != null ? p.getHealthScore() : (latestScore == null ? null : latestScore.getHealthScore()));
+            vo.setRiskLevelName(CdScoreServiceImpl.healthLevelName(vo.getRiskLevel()));
             vo.setDoctorName(doctorNameMap.get(p.getDoctorId()));
             Long ownerDeptId = doctorDeptMap.get(p.getDoctorId());
             vo.setDeptId(ownerDeptId);
@@ -440,7 +442,7 @@ public class CdPatientServiceImpl implements CdPatientService {
     private List<Long> patientIdsOfRiskLevel(String riskLevel) {
         List<Long> ids = new ArrayList<>();
         for (CdHealthScore score : healthScoreMapper.selectLatestPerPatient()) {
-            if (riskLevel.equals(score.getRiskLevel())) {
+            if (riskLevel.equals(CdScoreServiceImpl.healthLevel(score.getHealthScore()))) {
                 ids.add(score.getPatientId());
             }
         }
@@ -519,8 +521,8 @@ public class CdPatientServiceImpl implements CdPatientService {
         List<Map<String, Object>> highRiskList = new ArrayList<>();
         for (CdPatient p : allPatients) {
             CdHealthScore score = latestScoreMap.get(p.getPatientId());
-            String riskLevel = score != null ? score.getRiskLevel() : p.getRiskLevel();
-            Integer riskScore = score != null ? score.getTotalScore() : p.getRiskScore();
+            String riskLevel = score != null ? CdScoreServiceImpl.healthLevel(score.getHealthScore()) : CdScoreServiceImpl.healthLevel(p.getHealthScore());
+            Integer riskScore = score != null ? score.getHealthScore() : p.getHealthScore();
             if ("3".equals(riskLevel)) {
                 highRisk++;
                 Map<String, Object> m = new LinkedHashMap<>();
@@ -591,9 +593,9 @@ public class CdPatientServiceImpl implements CdPatientService {
         if (!scores.isEmpty()) {
             CdHealthScore sc = scores.get(0);
             Map<String, Object> s = new LinkedHashMap<>();
-            s.put("totalScore", sc.getTotalScore());
-            s.put("riskLevel", sc.getRiskLevel());
-            s.put("riskLevelName", "3".equals(sc.getRiskLevel()) ? "高危" : ("2".equals(sc.getRiskLevel()) ? "中危" : "低危"));
+            s.put("healthScore", sc.getHealthScore());
+            s.put("healthLevel", CdScoreServiceImpl.healthLevel(sc.getHealthScore()));
+            s.put("healthLevelName", CdScoreServiceImpl.healthLevelName(CdScoreServiceImpl.healthLevel(sc.getHealthScore())));
             s.put("calcTime", sc.getCalcTime());
             result.put("healthScore", s);
         }

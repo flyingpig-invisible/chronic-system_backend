@@ -14,6 +14,7 @@ import com.chronic.modules.chronic.mapper.CdGuideMapper;
 import com.chronic.modules.chronic.mapper.CdHealthScoreMapper;
 import com.chronic.modules.chronic.mapper.CdMeasureMapper;
 import com.chronic.modules.chronic.mapper.CdPatientDiseaseMapper;
+import com.chronic.modules.chronic.service.impl.CdScoreServiceImpl;
 import com.chronic.modules.miniapp.mapper.MpPatientMapper;
 import com.chronic.modules.chronic.mapper.CdPlanMapper;
 import com.chronic.modules.chronic.mapper.CdRemindLogMapper;
@@ -405,9 +406,9 @@ public class MpPatientServiceImpl implements MpPatientService {
 
     private MpHealthScoreVO toScoreVO(CdHealthScore score) {
         MpHealthScoreVO vo = new MpHealthScoreVO();
-        vo.setTotalScore(score.getTotalScore());
-        vo.setRiskLevel(score.getRiskLevel());
-        vo.setRiskLevelName(RISK_NAME.getOrDefault(score.getRiskLevel(), "-"));
+        vo.setHealthScore(score.getHealthScore());
+        vo.setHealthLevel(CdScoreServiceImpl.healthLevel(score.getHealthScore()));
+        vo.setHealthLevelName(CdScoreServiceImpl.healthLevelName(CdScoreServiceImpl.healthLevel(score.getHealthScore())));
         vo.setCalcTime(score.getCalcTime());
         vo.setTriggerType(score.getTriggerType());
         return vo;
@@ -432,9 +433,10 @@ public class MpPatientServiceImpl implements MpPatientService {
         vo.setDeptName(detail.getDeptName());
         vo.setDiseases(detail.getDiseases());
         vo.setDiseaseCodes(detail.getDiseaseCodes());
-        vo.setRiskLevel(score != null ? score.getRiskLevel() : patient.getRiskLevel());
-        vo.setRiskLevelName(RISK_NAME.getOrDefault(vo.getRiskLevel(), "-"));
-        vo.setRiskScore(score != null ? score.getTotalScore() : patient.getRiskScore());
+        String level = CdScoreServiceImpl.healthLevel(score != null ? score.getHealthScore() : patient.getHealthScore());
+        vo.setRiskLevel(level);
+        vo.setRiskLevelName(CdScoreServiceImpl.healthLevelName(level));
+        vo.setHealthScore(score != null ? score.getHealthScore() : patient.getHealthScore());
         vo.setPendingWarningCount(toInt(warningStat(patient.getPatientId()).get("pending")));
         vo.setLastMeasureTime(latestMeasureTime(patient.getPatientId(), patient.getLastMeasureTime()));
         vo.setStatus(patient.getStatus());

@@ -2,9 +2,8 @@ package com.chronic.modules.chronic.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.chronic.common.result.PageResult;
-import com.chronic.modules.chronic.dto.ScoreWeightSaveDTO;
+import com.chronic.modules.chronic.dto.PatientScoreWeightDTO;
 import com.chronic.modules.chronic.entity.CdHealthScore;
-import com.chronic.modules.chronic.entity.CdScoreWeight;
 import com.chronic.modules.chronic.query.ScoreQuery;
 
 import java.util.List;
@@ -14,24 +13,20 @@ public interface CdScoreService extends IService<CdHealthScore> {
 
     PageResult<CdHealthScore> queryPage(ScoreQuery query);
 
+    /**
+     * 计算并保存患者健康评分（近 7 天窗口）
+     */
     Map<String, Object> calcScore(Long patientId);
 
-    List<CdScoreWeight> weightList(String diseaseCode);
+    /**
+     * 患者权重配置：未配置时返回默认值
+     */
+    Map<String, Object> patientWeight(Long patientId);
 
     /**
-     * 覆盖保存某个病种的全部指标权重，要求权重之和为 1
+     * 覆盖保存患者权重，要求四项之和为 1
      */
-    void saveDiseaseWeights(ScoreWeightSaveDTO dto);
-
-    /**
-     * 病种综合权重（多病共存时各病种占比），未配置的病种按平分返回
-     */
-    List<Map<String, Object>> diseaseWeightList(List<String> diseaseCodes);
-
-    /**
-     * 覆盖保存病种综合权重，要求权重之和为 1
-     */
-    void saveCombinedDiseaseWeights(List<ScoreWeightSaveDTO.DiseaseItem> items);
+    void savePatientWeight(PatientScoreWeightDTO dto);
 
     /**
      * 物理删除评分记录
